@@ -31,33 +31,30 @@ const Font& pick(const Theme& th, FontWeight w) { return w == FontWeight::Bold ?
 
 }  // namespace
 
-void load_theme(Theme& th) {
-    th.regular = load_font("Rajdhani-SemiBold.ttf", 72);
-    th.bold = load_font("Rajdhani-Bold.ttf", 128);
-    Image img = GenImageGradientRadial(128, 128, 0.0f, WHITE, BLANK);
+void load_theme(Theme& th, ThemeId id) {
+    unload_theme(th);
+    th = theme_spec(id);
+    th.regular = load_font(th.regular_file, 72);
+    th.bold = load_font(th.bold_file, 128);
+    // Additive glows fade to black; alpha-blended ones must fade to transparent white or the
+    // falloff turns into a grey halo.
+    Image img = GenImageGradientRadial(128, 128, 0.0f, WHITE, th.additive_glow ? BLANK : Color{255, 255, 255, 0});
     th.glow = LoadTextureFromImage(img);
     UnloadImage(img);
     SetTextureFilter(th.glow, TEXTURE_FILTER_BILINEAR);
 }
 
 void unload_theme(Theme& th) {
-    if (th.regular.texture.id != GetFontDefault().texture.id) UnloadFont(th.regular);
-    if (th.bold.texture.id != GetFontDefault().texture.id) UnloadFont(th.bold);
-    UnloadTexture(th.glow);
+    const unsigned default_font = GetFontDefault().texture.id;
+    if (th.regular.texture.id != 0 && th.regular.texture.id != default_font) UnloadFont(th.regular);
+    if (th.bold.texture.id != 0 && th.bold.texture.id != default_font) UnloadFont(th.bold);
+    if (th.glow.id != 0) UnloadTexture(th.glow);
+    th.regular = th.bold = Font{};
+    th.glow = Texture2D{};
 }
 
-Color piece_color(game::PieceType t) {
-    switch (t) {
-        case game::PieceType::I: return {70, 225, 255, 255};
-        case game::PieceType::O: return {255, 222, 70, 255};
-        case game::PieceType::T: return {190, 95, 255, 255};
-        case game::PieceType::S: return {95, 240, 120, 255};
-        case game::PieceType::Z: return {255, 80, 110, 255};
-        case game::PieceType::J: return {75, 120, 255, 255};
-        case game::PieceType::L: return {255, 150, 60, 255};
-    }
-    return WHITE;
-}
+void begin_glow(const Theme& th) { BeginBlendMode(th.additive_glow ? BLEND_ADDITIVE : BLEND_ALPHA); }
+void end_glow() { EndBlendMode(); }
 
 Color rgba(std::uint32_t hex) {
     return {static_cast<unsigned char>(hex >> 24), static_cast<unsigned char>(hex >> 16),
@@ -79,7 +76,7 @@ Color lerp(Color a, Color b, float t) {
 
 Vector2 measure(const Theme& th, std::string_view s, float size, FontWeight w, float spacing) {
     const std::string str(s);
-    return MeasureTextEx(pick(th, w), str.c_str(), size, spacing);
+    return MeasureTextEx(pick(th, w), str.c_str(), size * th.font_scale, spacing * th.spacing_scale);
 }
 
 std::string ellipsize(const Theme& th, std::string_view s, float max_width, float size, FontWeight w, float spacing) {
@@ -104,9 +101,11 @@ std::string ellipsize(const Theme& th, std::string_view s, float max_width, floa
 
 void text(const Theme& th, std::string_view s, Vector2 pos, float size, Color c, FontWeight w, float spacing) {
     const std::string str(s);
+    size *= th.font_scale;
+    spacing *= th.spacing_scale;
     // Soft drop shadow keeps text readable over bright visualizer presets.
     const float off = std::max(1.0f, std::round(size * 0.05f));
-    const Color shadow{0, 0, 0, static_cast<unsigned char>(static_cast<float>(c.a) * 0.6f)};
+    const Color shadow = with_alpha(th.text_shadow, static_cast<float>(c.a) / 255.0f);
     DrawTextEx(pick(th, w), str.c_str(), {std::round(pos.x) + off, std::round(pos.y) + off}, size, spacing, shadow);
     DrawTextEx(pick(th, w), str.c_str(), {std::round(pos.x), std::round(pos.y)}, size, spacing, c);
 }
@@ -129,18 +128,21 @@ void label(const Theme& th, std::string_view s, Vector2 pos, float size, Color c
 
 void draw_glow(const Theme& th, Vector2 center, float radius, Color c) {
     DrawTexturePro(th.glow, {0, 0, static_cast<float>(th.glow.width), static_cast<float>(th.glow.height)},
-                   {center.x - radius, center.y - radius, radius * 2, radius * 2}, {0, 0}, 0, c);
+                   {center.x - radius, center.y - radius, radius * 2, radius * 2}, {0, 0}, 0,
+                   with_alpha(c, th.glow_gain));
 }
 
 void glow_text_centered(const Theme& th, std::string_view s, Vector2 center, float size, Color c, float glow,
                         FontWeight w, float spacing) {
     if (glow > 0) {
         const Vector2 m = measure(th, s, size, w, spacing);
-        BeginBlendMode(BLEND_ADDITIVE);
+        begin_glow(th);
         const float r = std::max(m.x, m.y) * 0.6f;
         DrawTexturePro(th.glow, {0, 0, static_cast<float>(th.glow.width), static_cast<float>(th.glow.height)},
-                       {center.x - r, center.y - m.y * 0.9f, r * 2, m.y * 1.8f}, {0, 0}, 0, with_alpha(c, 0.35f * glow));
-        EndBlendMode();
+                       {center.x - r, center.y - m.y * 0.9f, r * 2, m.y * 1.8f}, {0, 0}, 0,
+                       // On light themes a glow in the (dark) text colour reads as a smudge.
+                       with_alpha(th.additive_glow ? c : lerp(c, th.flash, 0.6f), 0.35f * glow * th.glow_gain));
+        end_glow();
     }
     text_centered(th, s, center, size, c, w, spacing);
 }

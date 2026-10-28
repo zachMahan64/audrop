@@ -36,8 +36,8 @@ void App::init() {
     InitAudioDevice();
     platform::init_file_dialogs();
 
-    load_theme(theme_);
     comp_ = std::make_unique<viz::Compositor>();
+    apply_theme(ui::theme_from_key(settings_.theme));
     screen_w_ = GetScreenWidth();
     screen_h_ = GetScreenHeight();
     comp_->resize(screen_w_, screen_h_);
@@ -133,6 +133,13 @@ void App::apply_settings() {
     effects_.set_options({settings_.reduce_flashing, settings_.screen_shake});
     if (settings_.vsync) SetWindowState(FLAG_VSYNC_HINT);
     else ClearWindowState(FLAG_VSYNC_HINT);
+}
+
+void App::apply_theme(ui::ThemeId id) {
+    load_theme(theme_, id);
+    comp_->set_grade({static_cast<int>(theme_.viz_grade), theme_.viz_saturation, theme_.viz_wash, theme_.sky_top,
+                      theme_.sky_bottom});
+    effects_.set_theme(&theme_);
 }
 
 void App::go(Screen s) {
@@ -335,7 +342,12 @@ void App::render(double frame_dt) {
 
     comp_->begin_scene();
     const bool menu_screen = screen_ != Screen::Playing;
-    comp_->draw_viz(viz_->texture(), settings_.viz_brightness * (menu_screen ? 0.75f : 1.0f), 1.0f);
+    comp_->draw_viz(viz_->texture(), settings_.viz_brightness * (menu_screen ? 0.75f : 1.0f));
+    if (theme_.bubbles) {
+        bubbles_.update(static_cast<float>(frame_dt), static_cast<float>(screen_w_), static_cast<float>(screen_h_),
+                        effects_.beat_pulse());
+        bubbles_.draw(theme_);
+    }
     switch (screen_) {
         case Screen::Title: draw_title(); break;
         case Screen::ModeSelect: draw_mode_select(); break;
@@ -352,6 +364,7 @@ void App::render(double frame_dt) {
     BeginDrawing();
     ClearBackground(BLACK);
     viz::PostParams post = screen_ == Screen::Playing ? effects_.post() : viz::PostParams{};
+    post.vignette = theme_.vignette;
     comp_->present(post);
     EndDrawing();
     debug_after_present();
@@ -376,7 +389,7 @@ void App::draw_header(const char* title, const char* subtitle) {
 
 void App::draw_panel(Rectangle r, float pad) {
     const Rectangle p{r.x - pad, r.y - pad, r.width + pad * 2, r.height + pad * 2};
-    comp_->draw_frosted(p, 0.55f);
+    comp_->draw_frosted(p, with_alpha(theme_.frost, 0.55f), theme_.panel_gloss);
     DrawRectangleLinesEx(p, 1, with_alpha(theme_.line, 0.08f));
 }
 

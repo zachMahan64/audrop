@@ -117,5 +117,5 @@ Put your own `.milk` presets in `presets/` there to use them instead of the bund
 ## Licenses
 
 audrop links libprojectM (LGPL-2.1) as a shared library. raylib and nativefiledialog-extended are
-zlib, nlohmann/json is MIT, the Rajdhani font is SIL OFL 1.1 (`assets/fonts/OFL.txt`), and the
+zlib, nlohmann/json is MIT, the Rajdhani, Nunito and Selawik fonts are SIL OFL 1.1 (`assets/fonts/*-OFL.txt`), and the
 projectM preset packs carry their authors' licenses.

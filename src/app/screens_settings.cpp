@@ -21,6 +21,7 @@ enum Row {
     kVolume,
     kSfx,
     kSfxVolume,
+    kTheme,
     kVizBrightness,
     kVizResolution,
     kPanel,
@@ -67,9 +68,10 @@ std::vector<MenuItem> App::settings_items() const {
         {"MUSIC VOLUME", pct(s.music_volume), true},
         {"SOUND EFFECTS", on_off(s.sfx_enabled), true, true, "Drop and line clear sounds. Turn off to hear only the music"},
         {"SFX VOLUME", pct(s.sfx_volume), true, s.sfx_enabled},
+        {"THEME", theme_.name, true, true, "Drop, Milky (light), Frutiger (aero)"},
         {"VISUALIZER BRIGHTNESS", pct(s.viz_brightness), true},
         {"VISUALIZER RESOLUTION", pct(s.viz_resolution), true, true, "Lower is faster on weak GPUs"},
-        {"BOARD PANEL DARKNESS", pct(s.board_opacity), true},
+        {"BOARD PANEL OPACITY", pct(s.board_opacity), true},
         {"VISUAL CHANGE EVERY", std::to_string(static_cast<int>(s.preset_seconds)) + " s", true},
         {"BEAT LANE", on_off(s.show_beat_lane), true},
         {"SYNC ON 8TH NOTES", on_off(s.subdivide_beats), true, true, "Off-beat eighth notes also count for sync bonuses"},
@@ -92,6 +94,13 @@ void App::adjust_setting(int index, int dir) {
         case k180: s.allow_180 = !s.allow_180; break;
         case kVolume: s.music_volume = std::clamp(s.music_volume + 0.05f * static_cast<float>(dir), 0.0f, 1.0f); break;
         case kSfx: s.sfx_enabled = !s.sfx_enabled; break;
+        case kTheme: {
+            constexpr int n = static_cast<int>(ui::ThemeId::Count);
+            const auto next = static_cast<ui::ThemeId>((static_cast<int>(theme_.id) + dir + n) % n);
+            s.theme = std::string(ui::theme_key(next));
+            apply_theme(next);
+            break;
+        }
         case kSfxVolume:
             if (!s.sfx_enabled) return;
             s.sfx_volume = std::clamp(s.sfx_volume + 0.05f * static_cast<float>(dir), 0.0f, 1.0f);

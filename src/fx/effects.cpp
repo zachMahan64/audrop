@@ -26,6 +26,7 @@ void Effects::reset() {
     waves_.clear();
     popups_.clear();
     trauma_ = chroma_ = flash_ = beat_pulse_ = clear_glow_ = 0;
+    if (th_) flash_color_ = pulse_color_ = th_->flash;
     preset_cut_ = false;
 }
 
@@ -41,11 +42,11 @@ void Effects::popup(std::string text, Color color) {
 }
 
 void Effects::on_lock(const game::PieceLockedEvent& e, const BoardLayout& L) {
-    const Color c = piece_color(e.type);
+    const Color c = th_->piece(e.type);
     for (auto v : e.cells) {
         CellFlash f;
         f.r = L.cell_rect(v.x, v.y);
-        f.color = lerp(c, WHITE, 0.7f);
+        f.color = lerp(c, th_->flash, 0.7f);
         f.duration = 0.18f;
         cells_.push_back(f);
     }
@@ -74,14 +75,14 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
     if (tier >= 0) {
         const auto& t = tuning::kSyncTiers[static_cast<std::size_t>(tier)];
         tier_fx = t.fx_intensity;
-        tier_color = rgba(t.rgba);
+        tier_color = th_->tiers[static_cast<std::size_t>(tier)];
     } else if (e.sync.judged) {
         tier_fx = tuning::kOffBeatFx;
-        tier_color = {200, 205, 230, 255};
+        tier_color = lerp(th_->off_beat, th_->flash, 0.5f);
     } else {
         // No beat grid (yet): moderate effects so the game still feels good.
         tier_fx = 0.3f;
-        tier_color = {200, 220, 255, 255};
+        tier_color = lerp(th_->accent, th_->flash, 0.6f);
     }
     float size = tuning::kClearSizeFx[static_cast<std::size_t>(std::clamp(e.lines, 0, 4))];
     if (e.tspin != game::TSpin::None) size += tuning::kTSpinFxBonus;
@@ -96,7 +97,7 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
         f.y = L.cell_pos(0, row).y;
         f.height = L.cell;
         f.intensity = Ic;
-        f.color = lerp(WHITE, tier_color, 0.5f);
+        f.color = lerp(th_->flash, tier_color, 0.5f);
         f.duration = 0.25f + 0.3f * Ic;
         rows_.push_back(f);
         rows_y += f.y + L.cell / 2;
@@ -111,7 +112,7 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
     for (std::size_t r = 0; r < e.rows.size(); ++r) {
         for (int x = 0; x < game::Board::kWidth; ++x) {
             const auto v = e.contents[r][static_cast<std::size_t>(x)];
-            const Color base = v ? piece_color(game::cell_piece(v)) : WHITE;
+            const Color base = v ? th_->piece(game::cell_piece(v)) : th_->flash;
             const Rectangle cr = L.cell_rect(x, e.rows[r]);
             const float side = (static_cast<float>(x) - 4.5f) / 4.5f;
             for (int k = 0; k < per_cell; ++k) {
@@ -148,7 +149,7 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
     if (I >= tuning::kFxChromatic) chroma_ = std::max(chroma_, opts_.reduce_flashing ? 3.0f : 4.0f + 12.0f * Ic);
     if (I >= tuning::kFxFullFlash && !opts_.reduce_flashing) {
         flash_ = std::max(flash_, 0.22f * Ic);
-        flash_color_ = lerp(WHITE, tier_color, 0.5f);
+        flash_color_ = lerp(th_->flash, tier_color, 0.5f);
     }
     if (tier == tuning::kSyncTierCount - 1 && !opts_.reduce_flashing &&
         (e.lines == 4 || e.tspin != game::TSpin::None || e.all_clear))
@@ -168,7 +169,7 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
             j.duration = 0.9f;
         } else {
             j.text = "OFF BEAT";
-            j.color = {150, 155, 185, 255};
+            j.color = th_->off_beat;
             j.size = 0.75f;
             j.duration = 0.6f;
         }
@@ -184,20 +185,20 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
     if (e.combo > 0) sub += std::to_string(e.combo) + " COMBO  ";
     sub += "+" + format_int(e.score);
     c.sub = sub;
-    c.color = e.lines == 4 || e.tspin != game::TSpin::None ? Color{255, 230, 140, 255} : WHITE;
+    c.color = e.lines == 4 || e.tspin != game::TSpin::None ? th_->popup_big : th_->popup_clear;
     c.size = e.lines == 4 || e.tspin != game::TSpin::None ? 1.0f : 0.8f;
     c.slot = 1;
     c.duration = 1.4f;
     std::erase_if(popups_, [](const Popup& o) { return o.slot == 1; });
     popups_.push_back(std::move(c));
 
-    if (e.all_clear) popup("ALL CLEAR", Color{255, 240, 160, 255});
+    if (e.all_clear) popup("ALL CLEAR", th_->popup_all_clear);
 }
 
 void Effects::on_tspin_no_lines(game::TSpin t) {
     Popup c;
     c.text = clear_name(0, t);
-    c.color = {220, 160, 255, 255};
+    c.color = th_->popup_tspin;
     c.size = 0.8f;
     c.slot = 1;
     c.duration = 1.0f;
@@ -205,7 +206,7 @@ void Effects::on_tspin_no_lines(game::TSpin t) {
     popups_.push_back(std::move(c));
 }
 
-void Effects::on_level_up(int level) { popup("LEVEL " + std::to_string(level), Color{140, 230, 255, 255}); }
+void Effects::on_level_up(int level) { popup("LEVEL " + std::to_string(level), th_->popup_level); }
 
 void Effects::on_beat(float strength) { beat_pulse_ = std::max(beat_pulse_, strength); }
 
@@ -229,7 +230,7 @@ void Effects::update(float dt) {
 }
 
 void Effects::draw_board_layer(const Theme& th, const BoardLayout& L) const {
-    BeginBlendMode(BLEND_ADDITIVE);
+    begin_glow(th);
     for (const auto& t : trails_) {
         const float a = 1.0f - t.t();
         DrawRectangleGradientV(static_cast<int>(t.r.x), static_cast<int>(t.r.y), static_cast<int>(t.r.width),
@@ -246,7 +247,7 @@ void Effects::draw_board_layer(const Theme& th, const BoardLayout& L) const {
         DrawRectangleRec(rect, with_alpha(r.color, 0.65f * a));
         draw_glow(th, {rect.x + rect.width / 2, rect.y + rect.height / 2}, w * 0.6f, with_alpha(r.color, 0.35f * a * (0.3f + r.intensity)));
     }
-    EndBlendMode();
+    end_glow();
 }
 
 void Effects::draw_overlay(const Theme& th, const BoardLayout& L) const {

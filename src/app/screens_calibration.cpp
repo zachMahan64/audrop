@@ -137,9 +137,9 @@ void App::draw_calibration() {
     const float pulse = p.valid ? static_cast<float>(std::exp(-p.phase * 8.0)) : 0.0f;
     const Vector2 c{w / 2, h * 0.45f};
     const float r = h * 0.09f;
-    BeginBlendMode(BLEND_ADDITIVE);
+    begin_glow(theme_);
     draw_glow(theme_, c, r * (1.6f + pulse), with_alpha(theme_.accent, 0.25f + 0.6f * pulse));
-    EndBlendMode();
+    end_glow();
     DrawRing(c, r * 0.92f, r, 0, 360, 64, with_alpha(theme_.text, 0.5f + 0.5f * pulse));
     DrawCircleV(c, r * 0.85f * pulse, with_alpha(theme_.accent, 0.8f * pulse));
 

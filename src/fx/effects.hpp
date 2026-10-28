@@ -23,6 +23,11 @@ class Effects {
 public:
     void reset();
     void set_options(const FxOptions& o) { opts_ = o; }
+    // Colours for new effects come from this theme; it must outlive the Effects.
+    void set_theme(const ui::Theme* th) {
+        th_ = th;
+        flash_color_ = pulse_color_ = th->flash;
+    }
 
     void on_lock(const game::PieceLockedEvent& e, const ui::BoardLayout& L);
     void on_clear(const game::LineClearEvent& e, const ui::BoardLayout& L);
@@ -76,6 +81,7 @@ private:
     float rand01() { return std::uniform_real_distribution<float>(0.0f, 1.0f)(rng_); }
 
     FxOptions opts_;
+    const ui::Theme* th_ = nullptr;
     std::mt19937 rng_{1234};
     Particles particles_;
     std::vector<RowFlash> rows_;

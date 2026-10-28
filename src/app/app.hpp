@@ -12,6 +12,7 @@
 #include "audio/music_player.hpp"
 #include "audio/sfx.hpp"
 #include "audio/spectrum.hpp"
+#include "fx/bubbles.hpp"
 #include "fx/effects.hpp"
 #include "game/game.hpp"
 #include "persist/scores.hpp"
@@ -45,6 +46,7 @@ private:
     void update_track_state();
     void refresh_beat_grid();
     void apply_settings();
+    void apply_theme(ui::ThemeId id);
     void save_playlist() const;
     void load_playlist();
     void add_paths(const std::vector<std::filesystem::path>& paths);
@@ -112,6 +114,7 @@ private:
     std::unique_ptr<viz::Compositor> comp_;
     ui::Theme theme_;
     fx::Effects effects_;
+    fx::Bubbles bubbles_;
     ui::BoardLayout layout_;
     std::vector<float> pcm_scratch_;
 

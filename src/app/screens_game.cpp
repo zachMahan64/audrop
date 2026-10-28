@@ -223,7 +223,7 @@ void App::tick_game(double dt) {
                     end_timer_ = kEndDelay;
                     release_all_buttons();
                     const char* msg = !e.completed ? "GAME OVER" : mode_ == game::Mode::Ultra ? "TIME UP" : "COMPLETE";
-                    effects_.popup(msg, e.completed ? Color{140, 255, 200, 255} : Color{255, 120, 150, 255});
+                    effects_.popup(msg, e.completed ? theme_.popup_complete : theme_.popup_game_over);
                 }
             },
             ev);
@@ -262,13 +262,14 @@ void App::draw_game() {
     // Frosted side panels and lane strip keep the HUD legible over any preset.
     const float pad = layout_.cell * 0.45f;
     const float side_dark = settings_.board_opacity * 0.75f;
-    comp_->draw_frosted({layout_.left.x - pad, layout_.board.y, layout_.left.width + pad * 2, layout_.board.height}, side_dark);
-    comp_->draw_frosted({layout_.right.x - pad, layout_.board.y, layout_.right.width + pad * 2, layout_.board.height}, side_dark);
+    const Color side = with_alpha(theme_.frost, side_dark);
+    comp_->draw_frosted({layout_.left.x - pad, layout_.board.y, layout_.left.width + pad * 2, layout_.board.height}, side, theme_.panel_gloss);
+    comp_->draw_frosted({layout_.right.x - pad, layout_.board.y, layout_.right.width + pad * 2, layout_.board.height}, side, theme_.panel_gloss);
     if (settings_.show_beat_lane)
-        comp_->draw_frosted({layout_.lane.x, layout_.lane.y, layout_.lane.width, layout_.lane.height}, side_dark);
+        comp_->draw_frosted({layout_.lane.x, layout_.lane.y, layout_.lane.width, layout_.lane.height}, side, theme_.panel_gloss);
 
     BoardStyle style;
-    style.panel_darkness = settings_.board_opacity;
+    style.panel_opacity = settings_.board_opacity;
     style.beat_pulse = effects_.beat_pulse();
     style.clear_glow = effects_.clear_glow();
     style.pulse_color = effects_.pulse_color();

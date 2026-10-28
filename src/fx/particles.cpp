@@ -25,13 +25,13 @@ void Particles::update(float dt) {
 }
 
 void Particles::draw(const ui::Theme& th) const {
-    BeginBlendMode(BLEND_ADDITIVE);
+    ui::begin_glow(th);
     for (const auto& p : items_) {
         const float t = std::clamp(p.life / p.max_life, 0.0f, 1.0f);
         const float r = p.size * (0.4f + 0.6f * t);
         ui::draw_glow(th, p.pos, r, ui::with_alpha(p.color, t));
     }
-    EndBlendMode();
+    ui::end_glow();
 }
 
 }  // namespace audrop::fx

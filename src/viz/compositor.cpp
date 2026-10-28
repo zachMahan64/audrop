@@ -30,10 +30,28 @@ out vec4 finalColor;
 uniform sampler2D texture0;
 uniform float brightness;
 uniform float saturation;
+uniform vec4 wash;
+uniform int mode;
+uniform vec3 sky_top;
+uniform vec3 sky_bottom;
 void main() {
     vec3 c = texture(texture0, fragTexCoord).rgb;
     float l = dot(c, vec3(0.299, 0.587, 0.114));
-    finalColor = vec4(mix(vec3(l), c, saturation) * brightness, 1.0);
+    vec3 g = mix(vec3(l), c, saturation) * brightness;
+    vec3 hue = g / max(max(g.r, max(g.g, g.b)), 0.001);
+    float lg = clamp(dot(g, vec3(0.299, 0.587, 0.114)) * 1.6, 0.0, 1.0);
+    vec3 col;
+    if (mode == 1) {
+        col = wash.rgb * mix(vec3(1.0), hue, wash.a * lg);
+    } else if (mode == 2) {
+        // Render textures are stored bottom-up, so texture y = 1 is the top of the screen.
+        vec3 base = mix(sky_bottom, sky_top, smoothstep(0.0, 1.0, fragTexCoord.y));
+        vec3 glow = mix(wash.rgb, hue, 0.35) * lg * wash.a;
+        col = 1.0 - (1.0 - base) * (1.0 - glow);
+    } else {
+        col = mix(g, wash.rgb, wash.a);
+    }
+    finalColor = vec4(col, 1.0);
 }
 )";
 
@@ -84,6 +102,10 @@ Compositor::Compositor() {
     grade_ = LoadShaderFromMemory(nullptr, kGradeFs);
     grade_brightness_loc_ = GetShaderLocation(grade_, "brightness");
     grade_saturation_loc_ = GetShaderLocation(grade_, "saturation");
+    grade_wash_loc_ = GetShaderLocation(grade_, "wash");
+    grade_mode_loc_ = GetShaderLocation(grade_, "mode");
+    grade_sky_top_loc_ = GetShaderLocation(grade_, "sky_top");
+    grade_sky_bottom_loc_ = GetShaderLocation(grade_, "sky_bottom");
     post_ = LoadShaderFromMemory(nullptr, kPostFs);
     post_res_loc_ = GetShaderLocation(post_, "resolution");
     post_chroma_loc_ = GetShaderLocation(post_, "chroma");
@@ -150,22 +172,46 @@ void Compositor::begin_scene() {
 
 void Compositor::end_scene() { EndTextureMode(); }
 
-void Compositor::draw_viz(const Texture2D& viz, float brightness, float saturation) {
+void Compositor::begin_grade(float brightness) {
+    const Grade& g = grade_params_;
+    const float wash[4] = {g.wash.r / 255.0f, g.wash.g / 255.0f, g.wash.b / 255.0f, g.wash.a / 255.0f};
+    const float top[3] = {g.sky_top.r / 255.0f, g.sky_top.g / 255.0f, g.sky_top.b / 255.0f};
+    const float bottom[3] = {g.sky_bottom.r / 255.0f, g.sky_bottom.g / 255.0f, g.sky_bottom.b / 255.0f};
     BeginShaderMode(grade_);
     SetShaderValue(grade_, grade_brightness_loc_, &brightness, SHADER_UNIFORM_FLOAT);
-    SetShaderValue(grade_, grade_saturation_loc_, &saturation, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(grade_, grade_saturation_loc_, &g.saturation, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(grade_, grade_wash_loc_, wash, SHADER_UNIFORM_VEC4);
+    SetShaderValue(grade_, grade_mode_loc_, &g.mode, SHADER_UNIFORM_INT);
+    SetShaderValue(grade_, grade_sky_top_loc_, top, SHADER_UNIFORM_VEC3);
+    SetShaderValue(grade_, grade_sky_bottom_loc_, bottom, SHADER_UNIFORM_VEC3);
+}
+
+void Compositor::draw_viz(const Texture2D& viz, float brightness) {
+    begin_grade(brightness);
     DrawTexturePro(viz, flipped(viz), {0, 0, static_cast<float>(width_), static_cast<float>(height_)}, {0, 0}, 0, WHITE);
     EndShaderMode();
 }
 
-void Compositor::draw_frosted(Rectangle r, float darkness) {
+void Compositor::draw_frosted(Rectangle r, Color tint, float gloss) {
     const Texture2D& t = blur_a_.texture;
     const float sx = static_cast<float>(t.width) / static_cast<float>(width_);
     const float sy = static_cast<float>(t.height) / static_cast<float>(height_);
     // Render textures are stored bottom-up: screen row y maps to texture row (H - y).
     const Rectangle src{r.x * sx, static_cast<float>(t.height) - (r.y + r.height) * sy, r.width * sx, -r.height * sy};
+    begin_grade(1.0f);
     DrawTexturePro(t, src, r, {0, 0}, 0, WHITE);
-    DrawRectangleRec(r, Fade(Color{6, 4, 16, 255}, std::clamp(darkness, 0.0f, 1.0f)));
+    EndShaderMode();
+    DrawRectangleRec(r, tint);
+    if (gloss > 0) {
+        const unsigned char a = static_cast<unsigned char>(std::clamp(gloss, 0.0f, 1.0f) * 255.0f);
+        auto white = [a](float k) { return Color{255, 255, 255, static_cast<unsigned char>(a * k)}; };
+        DrawRectangleGradientV(static_cast<int>(r.x), static_cast<int>(r.y), static_cast<int>(r.width),
+                               static_cast<int>(r.height * 0.45f), white(0.22f), white(0.03f));
+        DrawRectangleGradientV(static_cast<int>(r.x), static_cast<int>(r.y + r.height * 0.8f), static_cast<int>(r.width),
+                               static_cast<int>(r.height * 0.2f), white(0.0f), white(0.08f));
+        DrawRectangleLinesEx(r, 1, white(0.55f));
+        DrawLineEx({r.x + 1, r.y + 1.5f}, {r.x + r.width - 1, r.y + 1.5f}, 1, white(0.8f));
+    }
 }
 
 void Compositor::present(const PostParams& p) {

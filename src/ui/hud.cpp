@@ -43,7 +43,7 @@ void draw_beat_lane(const Theme& th, Rectangle lane, const sync::BeatGrid* grid,
         const float half = static_cast<float>(ms / 1000.0 / p.beat_length) * px_per_beat;
         const float h = lane.height * (0.35f + 0.1f * static_cast<float>(tier) / tuning::kSyncTierCount);
         DrawRectangleRec({cx - half, cy - h / 2, half * 2, h},
-                         with_alpha(rgba(tuning::kSyncTiers[static_cast<std::size_t>(tier)].rgba), 0.12f));
+                         with_alpha(th.tiers[static_cast<std::size_t>(tier)], 0.12f));
     }
     DrawLineEx({cx, lane.y}, {cx, lane.y + lane.height}, 2, with_alpha(th.text, 0.7f));
 
@@ -59,7 +59,7 @@ void draw_beat_lane(const Theme& th, Rectangle lane, const sync::BeatGrid* grid,
             const float near = std::max(0.0f, 1.0f - dist * 6.0f);
             const float h = lane.height * (half ? 0.4f : 0.8f);
             DrawLineEx({x, cy - h / 2}, {x, cy + h / 2}, half ? 2.0f : 3.0f + 2.0f * near,
-                       with_alpha(lerp(th.accent, WHITE, near), 0.25f + 0.75f * fade));
+                       with_alpha(lerp(th.accent, th.flash, near), 0.25f + 0.75f * fade));
         }
     }
 }

@@ -2,6 +2,7 @@
 
 #include <raylib.h>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -12,24 +13,92 @@ namespace audrop::ui {
 
 enum class FontWeight { Regular, Bold };
 
+// Selectable looks. Order is the order the THEME setting cycles through.
+enum class ThemeId { Drop, Milky, Frutiger, Count };
+
+enum class BlockStyle {
+    Glass,  // translucent fill, top sheen, bright outline (Drop)
+    Soft,   // opaque rounded tile with a soft shadow (Milky)
+    Gel,    // glossy jelly tile: specular cap, bright bottom rim (Frutiger)
+};
+
+// How the visualizer is coloured before anything is drawn over it.
+enum class VizGrade {
+    Dark,    // desaturate, then mix towards `viz_wash` by its alpha
+    Pastel,  // pastel hue tints over a `viz_wash` base (light themes)
+    Sky,     // `sky_top` -> `sky_bottom` gradient, visualizer screened on as glowing highlights
+};
+
+// Everything that differs between themes. Fonts and the glow sprite are loaded by load_theme;
+// the rest is plain data from theme_spec().
 struct Theme {
+    ThemeId id = ThemeId::Drop;
+    const char* name = "DROP";
+
+    // Fonts. Sizes and letter spacing passed to the text helpers are scaled by these.
+    const char* regular_file = "Rajdhani-SemiBold.ttf";
+    const char* bold_file = "Rajdhani-Bold.ttf";
+    float font_scale = 1.0f;
+    float spacing_scale = 1.0f;
     Font regular{};
     Font bold{};
-    Texture2D glow{};  // soft radial sprite for additive glows/particles
+    Texture2D glow{};  // soft radial sprite for glows/particles
 
+    // Text and UI.
     Color text{236, 240, 255, 255};
     Color text_dim{170, 176, 205, 255};
     Color text_faint{120, 126, 160, 255};
+    Color text_shadow{0, 0, 0, 153};  // alpha is relative to the text's alpha
     Color accent{120, 220, 255, 255};
     Color accent2{255, 110, 220, 255};
-    Color panel{8, 6, 20, 255};
-    Color line{210, 220, 255, 255};
+    Color panel{8, 6, 20, 255};       // solid overlays (pause dim, toasts)
+    Color line{210, 220, 255, 255};   // grid, borders, well edges
+
+    // Background (see VizGrade). For Sky, viz_wash's colour tints the highlights and its alpha
+    // sets their strength.
+    VizGrade viz_grade = VizGrade::Dark;
+    float viz_saturation = 1.0f;
+    Color viz_wash{0, 0, 0, 0};
+    Color sky_top{0, 0, 0, 255};
+    Color sky_bottom{0, 0, 0, 255};
+    bool bubbles = false;             // ambient rising bubbles over the background
+    Color frost{6, 4, 16, 255};       // tint over frosted panels; alpha comes from the panel setting
+    float panel_gloss = 0.0f;         // glassy sheen and rim on frosted panels (0 = none)
+    float vignette = 0.45f;
+
+    // Pieces and effects.
+    std::array<Color, 7> pieces{};   // indexed by game::PieceType
+    BlockStyle blocks = BlockStyle::Glass;
+    float ghost_whiten = 0.0f;        // ghost fill: piece colour mixed this far towards white...
+    float ghost_alpha = 0.10f;        // ...at this opacity (outline stays the piece colour)
+    bool additive_glow = true;        // false = normal alpha blending (needed on light backgrounds)
+    float glow_gain = 1.0f;           // scales every glow / particle alpha
+    Color flash{255, 255, 255, 255};  // base for lock, row and screen flashes
+    std::array<Color, 5> tiers{};     // judgment colours, indexed like tuning::kSyncTiers
+    Color off_beat{150, 155, 185, 255};
+    Color popup_clear{255, 255, 255, 255};
+    Color popup_big{255, 230, 140, 255};  // tetris / t-spin
+    Color popup_all_clear{255, 240, 160, 255};
+    Color popup_tspin{220, 160, 255, 255};
+    Color popup_level{140, 230, 255, 255};
+    Color popup_complete{140, 255, 200, 255};
+    Color popup_game_over{255, 120, 150, 255};
+
+    Color piece(game::PieceType t) const { return pieces[static_cast<std::size_t>(t)]; }
 };
 
-void load_theme(Theme& theme);
+Theme theme_spec(ThemeId id);
+ThemeId theme_from_key(std::string_view key);  // unknown keys give Drop
+std::string_view theme_key(ThemeId id);        // stable id for settings.json
+
+// Fills `theme` from theme_spec(id) and loads its fonts. Unloads anything previously loaded.
+void load_theme(Theme& theme, ThemeId id);
 void unload_theme(Theme& theme);
 
-Color piece_color(game::PieceType t);
+// Wrap glow / particle / flash drawing: additive or alpha blending depending on the theme.
+void begin_glow(const Theme& th);
+void end_glow();
+
 Color rgba(std::uint32_t hex);
 Color with_alpha(Color c, float a);
 Color lerp(Color a, Color b, float t);

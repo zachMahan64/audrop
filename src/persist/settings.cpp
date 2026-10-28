@@ -38,6 +38,7 @@ Settings load_settings() {
     get(j, "sfx_volume", s.sfx_volume);
     get(j, "calibration_ms", s.calibration_ms);
     get(j, "subdivide_beats", s.subdivide_beats);
+    get(j, "theme", s.theme);
     get(j, "viz_brightness", s.viz_brightness);
     get(j, "viz_resolution", s.viz_resolution);
     get(j, "board_opacity", s.board_opacity);
@@ -61,6 +62,7 @@ void save_settings(const Settings& s) {
         {"sfx_volume", s.sfx_volume},
         {"calibration_ms", s.calibration_ms},
         {"subdivide_beats", s.subdivide_beats},
+        {"theme", s.theme},
         {"viz_brightness", s.viz_brightness},
         {"viz_resolution", s.viz_resolution},
         {"board_opacity", s.board_opacity},

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "game/game.hpp"
 
 namespace audrop::persist {
@@ -21,6 +23,7 @@ struct Settings {
     bool subdivide_beats = false;
 
     // Visuals
+    std::string theme = "drop";  // ui::theme_key()
     float viz_brightness = 0.7f;
     float viz_resolution = 0.75f;
     float board_opacity = 0.6f;

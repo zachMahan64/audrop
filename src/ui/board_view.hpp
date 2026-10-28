@@ -22,13 +22,13 @@ struct BoardLayout {
 BoardLayout compute_layout(float width, float height);
 
 struct BoardStyle {
-    float panel_darkness = 0.6f;
+    float panel_opacity = 0.6f;  // frosted well tint strength
     float beat_pulse = 0;   // 0..1, decays after each beat
     float clear_glow = 0;   // 0..1, after big clears
     Color pulse_color = WHITE;
 };
 
-void draw_block(Rectangle r, Color c, float alpha);
+void draw_block(const Theme& th, Rectangle r, Color c, float alpha);
 void draw_piece_icon(const Theme& th, game::PieceType type, Vector2 center, float cell, float alpha);
 void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, const BoardLayout& L, const BoardStyle& st);
 

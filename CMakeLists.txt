@@ -140,7 +140,9 @@ add_executable(audrop
     src/viz/compositor.cpp
     src/fx/particles.cpp
     src/fx/effects.cpp
+    src/fx/bubbles.cpp
     src/ui/theme.cpp
+    src/ui/themes.cpp
     src/ui/widgets.cpp
     src/ui/board_view.cpp
     src/ui/hud.cpp

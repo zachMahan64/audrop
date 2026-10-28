@@ -162,7 +162,7 @@ void App::draw_high_scores() {
     std::int64_t hits = 0;
     for (auto v : L.sync_tiers) hits += v;
     char line[256];
-    std::snprintf(line, sizeof line, "%d games    %s played    %s lines    %s tetrises    %s T-spins    %s on-beat clears    best sync streak %d",
+    std::snprintf(line, sizeof line, "%d games    %s played    %s lines    %s quads    %s T-spins    %s on-beat clears    best sync streak %d",
                   L.games, format_time(L.play_time, false).c_str(), format_int(L.lines).c_str(), format_int(L.tetrises).c_str(),
                   format_int(L.tspins).c_str(), format_int(hits).c_str(), L.best_sync_streak);
     const auto parts = wrap_segments(theme_, line, x1 - x0, size * 0.85f);

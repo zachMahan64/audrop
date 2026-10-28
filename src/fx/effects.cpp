@@ -11,7 +11,7 @@ namespace audrop::fx {
 using namespace ui;
 
 std::string clear_name(int lines, game::TSpin tspin) {
-    static constexpr const char* kCounts[] = {"", "SINGLE", "DOUBLE", "TRIPLE", "TETRIS"};
+    static constexpr const char* kCounts[] = {"", "SINGLE", "DOUBLE", "TRIPLE", "QUAD"};
     if (tspin == game::TSpin::None) return kCounts[std::clamp(lines, 0, 4)];
     std::string s = tspin == game::TSpin::Mini ? "MINI T-SPIN" : "T-SPIN";
     if (lines > 0) s += std::string(" ") + kCounts[std::clamp(lines, 0, 3)];

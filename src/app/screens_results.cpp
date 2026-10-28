@@ -86,7 +86,7 @@ void App::draw_results() {
            {{"Singles", std::to_string(s.clears[1])},
             {"Doubles", std::to_string(s.clears[2])},
             {"Triples", std::to_string(s.clears[3])},
-            {"Tetrises", std::to_string(s.clears[4])},
+            {"Quads", std::to_string(s.clears[4])},
             {"T-spin S / D / T",
              std::to_string(s.tspins[1]) + " / " + std::to_string(s.tspins[2]) + " / " + std::to_string(s.tspins[3])},
             {"T-spin (no lines)", std::to_string(s.tspins[0])},

@@ -84,7 +84,7 @@ A clear is judged by how far its lock was from the nearest beat:
 
 The tiers, multipliers and effect intensities live in `src/config/tuning.hpp`. Closer hits
 trigger grander effects: particle bursts, then shockwaves and screen shake, then chromatic
-aberration, full-screen flashes and (for PERFECT tetrises / T-spins / all clears) a hard cut to
+aberration, full-screen flashes and (for PERFECT quads / T-spins / all clears) a hard cut to
 a new visual.
 
 - **Settings → Calibrate audio offset** measures your audio/display latency by tapping along to

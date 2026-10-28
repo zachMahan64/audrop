@@ -104,9 +104,12 @@ void App::draw_results() {
     }
     sync_rows.emplace_back("Off beat", std::to_string(s.sync_misses));
     sync_rows.emplace_back("Best sync streak", std::to_string(s.max_sync_streak));
-    char off[48];
-    std::snprintf(off, sizeof off, "%+.1f ms  (+/- %.1f)", s.avg_offset_ms(), s.offset_stddev_ms());
+    // Mean and spread get a row each; together they're too wide for one value cell.
+    char off[32], spread[32];
+    std::snprintf(off, sizeof off, "%+.1f ms", s.avg_offset_ms());
+    std::snprintf(spread, sizeof spread, "%.1f ms", s.offset_stddev_ms());
     sync_rows.emplace_back("Avg offset", s.sync_offset_count ? off : "-");
+    sync_rows.emplace_back("Offset spread", s.sync_offset_count ? spread : "-");
     column(x0 + (col_w + size * 2) * 2, "BEAT SYNC", sync_rows);
 
     if (s.sync_offset_count >= 8 && std::abs(s.avg_offset_ms()) > 15)

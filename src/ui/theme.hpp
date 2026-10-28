@@ -3,6 +3,7 @@
 #include <raylib.h>
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 #include "game/piece.hpp"
@@ -35,6 +36,9 @@ Color lerp(Color a, Color b, float t);
 
 // Text helpers. `spacing` is extra letter spacing in px.
 Vector2 measure(const Theme& th, std::string_view s, float size, FontWeight w = FontWeight::Regular, float spacing = 0);
+// Cuts `s` short with a trailing ellipsis so it fits in `max_width`; returns it unchanged if it already fits.
+std::string ellipsize(const Theme& th, std::string_view s, float max_width, float size, FontWeight w = FontWeight::Regular,
+                      float spacing = 0);
 void text(const Theme& th, std::string_view s, Vector2 pos, float size, Color c, FontWeight w = FontWeight::Regular,
           float spacing = 0);
 void text_centered(const Theme& th, std::string_view s, Vector2 center, float size, Color c,

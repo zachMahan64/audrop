@@ -18,12 +18,15 @@ namespace audrop::audio {
 
 struct Track {
     std::filesystem::path path;
-    std::string title;
+    std::string title;   // tag title, or the file name when untagged
+    std::string artist;  // empty when untagged
+    std::string album;   // empty when untagged
 };
 
 bool is_supported_audio(const std::filesystem::path& p);
 // Expands directories recursively, keeps supported files, sorted per directory.
 std::vector<std::filesystem::path> collect_audio(const std::vector<std::filesystem::path>& inputs);
+// Reads the file's tags (see audio/tags.hpp).
 Track make_track(const std::filesystem::path& p);
 
 // Streams the playlist on a dedicated pump thread so playback never stalls when the main

@@ -268,14 +268,10 @@ void App::draw_game() {
     const float w = static_cast<float>(screen_w_), h = static_cast<float>(screen_h_);
     const float cell = layout_.cell;
 
-    // Track banner (fades in on every track change).
-    const double age = wall_ - track_banner_at_;
-    if (age < 5.0 && !track_title_.empty()) {
-        const float a = static_cast<float>(std::min(1.0, std::min(age / 0.4, (5.0 - age) / 0.8)));
-        std::string line = track_title_;
-        if (const auto* g = usable_grid()) line += "   " + std::to_string(static_cast<int>(std::lround(g->bpm))) + " BPM";
-        text_centered(theme_, line, {w / 2, layout_.board.y - cell * 1.1f}, cell * 0.6f, with_alpha(theme_.text_dim, a),
-                      FontWeight::Regular, 1.5f);
+    // Now playing, bottom-left under the hold panel, kept clear of the beat lane.
+    if (!track_title_.empty()) {
+        const float size = std::clamp(h * 0.022f, 13.0f, 24.0f);
+        draw_track_info(size, layout_.lane.x - size * 2);
     }
 
     if (countdown_ > 0 && !paused_) {

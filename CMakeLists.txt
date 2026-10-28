@@ -102,6 +102,7 @@ add_library(audrop_core STATIC
     src/sync/beat_grid.cpp
     src/sync/judge.cpp
     src/audio/beat_tracker.cpp
+    src/audio/tags.cpp
 )
 target_include_directories(audrop_core PUBLIC src)
 target_compile_features(audrop_core PUBLIC cxx_std_23)
@@ -186,6 +187,7 @@ if(AUDROP_BUILD_TESTS)
         tests/test_scoring.cpp
         tests/test_sync.cpp
         tests/test_beat_tracker.cpp
+        tests/test_tags.cpp
     )
     target_link_libraries(audrop_tests PRIVATE audrop_core doctest::doctest)
     add_test(NAME audrop_tests COMMAND audrop_tests)

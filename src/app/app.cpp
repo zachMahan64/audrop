@@ -240,6 +240,8 @@ void App::update_track_state() {
     const auto np = player_->now_playing();
     track_override_ = np.override;
     track_title_ = np.valid ? np.track.title : "";
+    track_artist_ = np.valid ? np.track.artist : "";
+    track_album_ = np.valid ? np.track.album : "";
     track_path_ = np.valid && !np.override ? np.track.path : std::filesystem::path{};
     last_beat_index_ = LONG_MIN;
     analysis_revision_ = ~0ull;
@@ -374,26 +376,44 @@ void App::draw_panel(Rectangle r, float pad) {
     DrawRectangleLinesEx(p, 1, with_alpha(theme_.line, 0.08f));
 }
 
+float App::draw_track_info(float size, float max_width) {
+    const float h = static_cast<float>(screen_h_), w = static_cast<float>(screen_w_);
+    // Fades in on every track change.
+    const float a = static_cast<float>(std::min(1.0, (wall_ - track_banner_at_) / 0.4));
+    const float x = size;
+    const float bar_y = h - size * 1.2f, sub_y = bar_y - size * 1.35f, title_y = sub_y - size * 1.4f;
+    text(theme_, ellipsize(theme_, track_title_, max_width, size * 1.1f, FontWeight::Regular, 1), {x, title_y},
+         size * 1.1f, with_alpha(theme_.text, a), FontWeight::Regular, 1);
+    std::string sub = track_artist_;
+    if (!track_album_.empty()) sub += (sub.empty() ? "" : "  \u00B7  ") + track_album_;
+    if (const auto* g = usable_grid())
+        sub += (sub.empty() ? "" : "  \u00B7  ") + std::to_string(static_cast<int>(std::lround(g->bpm))) + " BPM";
+    if (!sub.empty())
+        text(theme_, ellipsize(theme_, sub, max_width, size * 0.8f, FontWeight::Regular, 1), {x, sub_y}, size * 0.8f,
+             with_alpha(theme_.text_dim, a), FontWeight::Regular, 1);
+    const auto np = player_->now_playing();
+    const float bar_w = std::min(max_width, w * 0.25f);
+    const float progress = np.length > 0 ? static_cast<float>(std::clamp(player_->time() / np.length, 0.0, 1.0)) : 0;
+    DrawRectangleRec({x, bar_y, bar_w, 2}, with_alpha(theme_.line, 0.15f * a));
+    DrawRectangleRec({x, bar_y, bar_w * progress, 2}, with_alpha(theme_.accent, 0.9f * a));
+    return title_y;
+}
+
 void App::draw_now_playing() {
     const float h = static_cast<float>(screen_h_), w = static_cast<float>(screen_w_);
     const float size = std::clamp(h * 0.024f, 14.0f, 26.0f);
     const float y = h - size * 2.4f;
-    const auto np = player_->now_playing();
-    if (np.valid) {
-        label(theme_, "NOW PLAYING", {size, y - size * 1.05f}, size * 0.7f, theme_.text_faint);
-        std::string line = np.track.title;
-        if (const auto* g = usable_grid()) line += "   " + std::to_string(static_cast<int>(std::lround(g->bpm))) + " BPM";
-        text(theme_, line, {size, y}, size * 1.15f, theme_.text, FontWeight::Regular, 1);
-        const float progress = np.length > 0 ? static_cast<float>(std::clamp(player_->time() / np.length, 0.0, 1.0)) : 0;
-        DrawRectangleRec({size, y + size * 1.5f, w * 0.25f, 2}, with_alpha(theme_.line, 0.15f));
-        DrawRectangleRec({size, y + size * 1.5f, w * 0.25f * progress, 2}, with_alpha(theme_.accent, 0.9f));
+    if (!track_title_.empty()) {
+        const float title_y = draw_track_info(size, w * 0.45f);
+        label(theme_, "NOW PLAYING", {size, title_y - size * 1.05f}, size * 0.7f, theme_.text_faint);
     } else {
         text(theme_, "Drop music files or folders onto the window to start", {size, y}, size, theme_.text_dim);
     }
     std::string keys = "[ ] TRACK    TAB VISUAL    F8 BAN VISUAL    F11 FULLSCREEN";
     text_right(theme_, keys, {w - size, y + size * 0.3f}, size * 0.7f, theme_.text_faint, FontWeight::Regular, 1.5f);
     if (viz_->supports_presets())
-        text_right(theme_, viz_->current_preset(), {w - size, y - size * 1.0f}, size * 0.7f, with_alpha(theme_.text_faint, 0.7f));
+        text_right(theme_, ellipsize(theme_, viz_->current_preset(), w * 0.4f, size * 0.7f), {w - size, y - size * 1.0f},
+                   size * 0.7f, with_alpha(theme_.text_faint, 0.7f));
 }
 
 void App::draw_toast() {

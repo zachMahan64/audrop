@@ -5,6 +5,7 @@
 //   AUDROP_DEBUG_SCREEN=playlist|settings|scores|calibration  open that screen at startup
 //   AUDROP_DEBUG_SHOT=name.png AUDROP_DEBUG_SHOT_AT=8 save a screenshot after N seconds and quit
 //   AUDROP_DEBUG_SHOT_CLEAR=3                        ...or 0.12 s after the Nth line clear instead
+//   AUDROP_DEBUG_PAUSE_AT=4                          open the pause menu after N seconds of play
 #include <raylib.h>
 
 #include <cstdlib>
@@ -60,6 +61,7 @@ void App::init_debug_hooks() {
         for (auto mode : game::kAllModes)
             if (game::mode_key(mode) == std::string_view(m)) debug_mode_ = mode;
     }
+    if (const char* p = env("AUDROP_DEBUG_PAUSE_AT")) debug_pause_at_ = std::atof(p);
     debug_bot_ = env("AUDROP_DEBUG_BOT") != nullptr;
     debug_bot_drop_only_ = debug_bot_ && std::string_view(env("AUDROP_DEBUG_BOT")) == "drop";
     if (const char* sc = env("AUDROP_DEBUG_SCREEN")) {
@@ -73,6 +75,10 @@ void App::init_debug_hooks() {
 }
 
 void App::debug_after_present() {
+    if (debug_pause_at_ > 0 && wall_ >= debug_pause_at_ && screen_ == Screen::Playing && !paused_) {
+        set_paused(true);
+        debug_pause_at_ = 0;
+    }
     if (debug_shot_.empty() || wall_ < debug_shot_at_) return;
     TakeScreenshot(debug_shot_.c_str());
     debug_shot_.clear();

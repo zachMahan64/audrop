@@ -5,6 +5,7 @@
 #include <numeric>
 
 #include "app/loop_clock.hpp"
+#include "audio/tags.hpp"
 #include "persist/paths.hpp"
 
 namespace audrop::audio {
@@ -46,7 +47,11 @@ std::vector<fs::path> collect_audio(const std::vector<fs::path>& inputs) {
     return out;
 }
 
-Track make_track(const fs::path& p) { return {p, persist::path_to_utf8(p.stem())}; }
+Track make_track(const fs::path& p) {
+    auto tags = read_tags(p);
+    if (tags.title.empty()) tags.title = persist::path_to_utf8(p.stem());
+    return {p, std::move(tags.title), std::move(tags.artist), std::move(tags.album)};
+}
 
 MusicPlayer::MusicPlayer() {
     g_ring = &pcm_;

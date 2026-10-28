@@ -58,6 +58,8 @@ private:
     // Frosted backing for menu content so it stays readable over bright presets.
     void draw_panel(Rectangle r, float pad);
     void draw_now_playing();
+    // Bottom-left title, artist / album / BPM line and progress bar. Returns the title's top y.
+    float draw_track_info(float size, float max_width);
     void draw_toast();
     Rectangle menu_area(float width_frac, float top_frac, int rows, float row_h) const;
     float row_height() const;
@@ -123,6 +125,8 @@ private:
     bool track_override_ = false;
     std::filesystem::path track_path_;
     std::string track_title_;
+    std::string track_artist_;
+    std::string track_album_;
     double track_banner_at_ = -100;
     sync::BeatGrid raw_grid_;
     sync::BeatAdjust adjust_;
@@ -161,6 +165,7 @@ private:
     bool debug_bot_ = false;
     bool debug_bot_drop_only_ = false;
     int debug_shot_clear_ = 0;  // screenshot shortly after this many line clears
+    double debug_pause_at_ = 0;
     int debug_clears_ = 0;
     void debug_on_clear();
     int debug_bot_piece_ = -1;

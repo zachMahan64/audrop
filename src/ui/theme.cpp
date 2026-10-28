@@ -11,10 +11,11 @@ namespace audrop::ui {
 namespace {
 
 Font load_font(const char* file, int size) {
-    // ASCII + Latin-1 so most track titles render.
+    // ASCII + Latin-1 + common typographic punctuation so most track titles render.
     std::vector<int> codepoints;
     for (int c = 32; c < 127; ++c) codepoints.push_back(c);
     for (int c = 160; c < 256; ++c) codepoints.push_back(c);
+    for (int c : {0x2013, 0x2014, 0x2018, 0x2019, 0x201A, 0x201C, 0x201D, 0x201E, 0x2022, 0x2026}) codepoints.push_back(c);
     const std::string path = persist::path_to_utf8(persist::asset_dir() / "fonts" / file);
     Font f = LoadFontEx(path.c_str(), size, codepoints.data(), static_cast<int>(codepoints.size()));
     if (f.texture.id == 0 || f.glyphCount == 0) {
@@ -79,6 +80,26 @@ Color lerp(Color a, Color b, float t) {
 Vector2 measure(const Theme& th, std::string_view s, float size, FontWeight w, float spacing) {
     const std::string str(s);
     return MeasureTextEx(pick(th, w), str.c_str(), size, spacing);
+}
+
+std::string ellipsize(const Theme& th, std::string_view s, float max_width, float size, FontWeight w, float spacing) {
+    if (measure(th, s, size, w, spacing).x <= max_width) return std::string(s);
+    // Binary search over UTF-8 codepoint boundaries for the longest prefix that fits.
+    std::vector<std::size_t> cuts;
+    for (std::size_t i = 1; i < s.size(); ++i)
+        if ((static_cast<unsigned char>(s[i]) & 0xC0) != 0x80) cuts.push_back(i);
+    auto with_dots = [&](std::size_t n) {
+        std::string out(s.substr(0, n));
+        while (!out.empty() && out.back() == ' ') out.pop_back();
+        return out + "\u2026";
+    };
+    std::size_t lo = 0, hi = cuts.size();  // answer is cuts[lo - 1], or nothing when lo == 0
+    while (lo < hi) {
+        const std::size_t mid = (lo + hi + 1) / 2;
+        if (measure(th, with_dots(cuts[mid - 1]), size, w, spacing).x <= max_width) lo = mid;
+        else hi = mid - 1;
+    }
+    return lo == 0 ? "\u2026" : with_dots(cuts[lo - 1]);
 }
 
 void text(const Theme& th, std::string_view s, Vector2 pos, float size, Color c, FontWeight w, float spacing) {

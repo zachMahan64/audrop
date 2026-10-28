@@ -89,7 +89,12 @@ void Menu::draw(const Theme& th, const std::vector<MenuItem>& items, Rectangle a
         const Color c = !it.enabled ? th.text_faint : (sel ? th.text : th.text_dim);
         text(th, it.label, {r.x + row_height * 0.45f, r.y + (row_height - size) / 2}, size, c, FontWeight::Regular, 1.5f);
         if (!it.value.empty()) {
-            std::string v = it.adjustable ? "<  " + it.value + "  >" : it.value;
+            // Long values (preset names, track titles) are ellipsized so they never run into the label.
+            const float label_w = measure(th, it.label, size, FontWeight::Regular, 1.5f).x;
+            float room = r.width - row_height * 0.3f - (row_height * 0.45f + label_w + row_height * 0.6f);
+            if (it.adjustable) room -= measure(th, "<    >", size, FontWeight::Regular, 1.0f).x;
+            const std::string fitted = ellipsize(th, it.value, room, size, FontWeight::Regular, 1.0f);
+            std::string v = it.adjustable ? "<  " + fitted + "  >" : fitted;
             text_right(th, v, {r.x + r.width - row_height * 0.3f, r.y + (row_height - size) / 2}, size,
                        sel ? th.accent : th.text_dim, FontWeight::Regular, 1.0f);
         }

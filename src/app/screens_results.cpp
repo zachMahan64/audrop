@@ -49,19 +49,20 @@ void App::draw_results() {
     // Headline number.
     const bool sprint = mode_ == game::Mode::Sprint;
     const std::string headline = sprint && last_entry_.completed ? format_time(s.time) : format_int(s.score);
-    glow_text_centered(theme_, headline, {w / 2, h * 0.27f}, h * 0.09f, theme_.text, 0.5f, FontWeight::Bold, 4);
+    glow_text_centered(theme_, headline, {w / 2, h * 0.255f}, h * 0.09f, theme_.text, 0.5f, FontWeight::Bold, 4);
     if (last_rank_ >= 0) {
         const std::string rank = last_rank_ == 0 ? "NEW PERSONAL BEST" : "#" + std::to_string(last_rank_ + 1) + " ON THE BOARD";
-        text_centered(theme_, rank, {w / 2, h * 0.335f}, h * 0.028f, theme_.accent, FontWeight::Bold, 4);
+        text_centered(theme_, rank, {w / 2, h * 0.315f}, h * 0.028f, theme_.accent, FontWeight::Bold, 4);
     }
 
     // Three columns of stats.
     const float size = std::clamp(h * 0.024f, 13.0f, 28.0f);
     const float col_w = w * 0.24f;
     const float x0 = w / 2 - col_w * 1.5f - size * 2;
-    draw_panel({x0, h * 0.37f, col_w * 3 + size * 4, h * 0.56f}, size * 1.2f);
+    // Starts low enough that the panel's padding (and border) clears the rank line above.
+    draw_panel({x0, h * 0.39f, col_w * 3 + size * 4, h * 0.54f}, size * 1.2f);
     auto column = [&](float x, const char* heading, const std::vector<std::pair<std::string, std::string>>& rows) {
-        float y = h * 0.39f;
+        float y = h * 0.41f;
         label(theme_, heading, {x, y}, size * 0.75f, theme_.accent);
         y += size * 1.6f;
         for (const auto& [k, v] : rows) {
@@ -87,7 +88,7 @@ void App::draw_results() {
             {"Doubles", std::to_string(s.clears[2])},
             {"Triples", std::to_string(s.clears[3])},
             {"Quads", std::to_string(s.clears[4])},
-            {"T-spin S / D / T",
+            {"T-spin S/D/T",
              std::to_string(s.tspins[1]) + " / " + std::to_string(s.tspins[2]) + " / " + std::to_string(s.tspins[3])},
             {"T-spin (no lines)", std::to_string(s.tspins[0])},
             {"Mini T-spins", std::to_string(s.tspin_minis[0] + s.tspin_minis[1] + s.tspin_minis[2])},

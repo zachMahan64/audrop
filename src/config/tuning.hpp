@@ -175,13 +175,13 @@ inline constexpr int kSfxVoices = 4;                 // overlapping copies of ea
 // Variety: each sound is rendered as several takes with randomized parameters (take 0 is
 // exactly the values above), and every playback adds a little pitch and gain jitter.
 // Amounts are ± fractions.
-inline constexpr int kSfxTakes = 4;
-inline constexpr double kSfxVaryPitch = 0.06;   // kick start / end pitch
-inline constexpr double kSfxVaryTime = 0.12;    // glide and decay times
-inline constexpr double kSfxVaryClick = 0.3;    // attack click level
-inline constexpr double kSfxVaryFilter = 0.2;   // whoosh filter sweep
-inline constexpr float kSfxPlayPitch = 0.025f;  // playback rate per play
-inline constexpr float kSfxPlayGain = 0.12f;    // volume per play
+inline constexpr int kSfxTakes = 6;
+inline constexpr double kSfxVaryPitch = 0.1;    // kick start / end pitch
+inline constexpr double kSfxVaryTime = 0.2;     // glide and decay times
+inline constexpr double kSfxVaryClick = 0.45;   // attack click level
+inline constexpr double kSfxVaryFilter = 0.3;   // whoosh filter sweep
+inline constexpr float kSfxPlayPitch = 0.045f;  // playback rate per play
+inline constexpr float kSfxPlayGain = 0.18f;    // volume per play
 
 // ---------------------------------------------------------------------------
 // Loop timing

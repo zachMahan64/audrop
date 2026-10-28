@@ -40,7 +40,7 @@ std::vector<MenuItem> App::theme_items() const {
 
 void App::tick_themes() {
     const auto items = theme_items();
-    const float rh = row_height() * 1.3f;
+    const float rh = row_height() * 1.6f;
     const auto r = menu_.update(items, menu_area(0.4f, 0.24f, static_cast<int>(items.size()), rh), rh);
     const int sel = menu_.selected();
     if (sel < kThemeCount && static_cast<ThemeId>(sel) != theme_.id) {
@@ -68,7 +68,7 @@ void App::tick_themes() {
 void App::draw_themes() {
     draw_header("THEMES");
     const auto items = theme_items();
-    const float rh = row_height() * 1.3f;
+    const float rh = row_height() * 1.6f;
     const Rectangle area = menu_area(0.4f, 0.24f, static_cast<int>(items.size()), rh);
     draw_panel({area.x, area.y, area.width, area.height + rh * 0.6f}, rh * 0.3f);
     menu_.draw(theme_, items, area, rh);

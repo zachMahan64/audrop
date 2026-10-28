@@ -76,7 +76,9 @@ void Menu::draw(const Theme& th, const std::vector<MenuItem>& items, Rectangle a
     const int n = static_cast<int>(items.size());
     const int first = first_visible(n);
     const int shown = visible_rows_ > 0 ? std::min(n, visible_rows_) : n;
-    const float size = row_height * 0.62f;
+    // Menus with detail lines use smaller labels so label + detail fit inside one row.
+    const bool details = std::ranges::any_of(items, [](const MenuItem& it) { return !it.detail.empty(); });
+    const float size = row_height * (details ? 0.45f : 0.62f);
     // Pixel themes leave room for the triangle cursor.
     const float indent = th.pixel_art ? std::max(row_height * 0.45f, 6 * th.unit) : row_height * 0.45f;
     const float right_pad = row_height * 0.3f;

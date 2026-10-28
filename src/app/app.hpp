@@ -47,6 +47,7 @@ private:
     void refresh_beat_grid();
     void apply_settings();
     void apply_theme(ui::ThemeId id);
+    void update_layout();  // depends on the window size, theme and pixel snap setting
     void save_playlist() const;
     void load_playlist();
     void add_paths(const std::vector<std::filesystem::path>& paths);

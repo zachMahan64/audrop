@@ -22,6 +22,7 @@ enum Row {
     kSfx,
     kSfxVolume,
     kTheme,
+    kPixelSnap,
     kVizBrightness,
     kVizResolution,
     kPanel,
@@ -68,7 +69,8 @@ std::vector<MenuItem> App::settings_items() const {
         {"MUSIC VOLUME", pct(s.music_volume), true},
         {"SOUND EFFECTS", on_off(s.sfx_enabled), true, true, "Drop and line clear sounds. Turn off to hear only the music"},
         {"SFX VOLUME", pct(s.sfx_volume), true, s.sfx_enabled},
-        {"THEME", theme_.name, true, true, "Drop, Milky (light), Frutiger (aero)"},
+        {"THEME", theme_.name, true, true, "Drop, Milky (light), Frutiger (aero), Retro (pixel art)"},
+        {"PIXEL SNAP", on_off(s.pixel_snap), true, theme_.pixel_art, "Sizes the board to whole pixels for crisp pixel art"},
         {"VISUALIZER BRIGHTNESS", pct(s.viz_brightness), true},
         {"VISUALIZER RESOLUTION", pct(s.viz_resolution), true, true, "Lower is faster on weak GPUs"},
         {"BOARD PANEL OPACITY", pct(s.board_opacity), true},
@@ -101,6 +103,11 @@ void App::adjust_setting(int index, int dir) {
             apply_theme(next);
             break;
         }
+        case kPixelSnap:
+            if (!theme_.pixel_art) return;
+            s.pixel_snap = !s.pixel_snap;
+            update_layout();
+            break;
         case kSfxVolume:
             if (!s.sfx_enabled) return;
             s.sfx_volume = std::clamp(s.sfx_volume + 0.05f * static_cast<float>(dir), 0.0f, 1.0f);

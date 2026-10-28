@@ -262,11 +262,10 @@ void App::draw_game() {
     // Frosted side panels and lane strip keep the HUD legible over any preset.
     const float pad = layout_.cell * 0.45f;
     const float side_dark = settings_.board_opacity * 0.75f;
-    const Color side = with_alpha(theme_.frost, side_dark);
-    comp_->draw_frosted({layout_.left.x - pad, layout_.board.y, layout_.left.width + pad * 2, layout_.board.height}, side, theme_.panel_gloss);
-    comp_->draw_frosted({layout_.right.x - pad, layout_.board.y, layout_.right.width + pad * 2, layout_.board.height}, side, theme_.panel_gloss);
-    if (settings_.show_beat_lane)
-        comp_->draw_frosted({layout_.lane.x, layout_.lane.y, layout_.lane.width, layout_.lane.height}, side, theme_.panel_gloss);
+    const float unit = layout_.cell / 8.0f;
+    draw_panel_bg(theme_, *comp_, {layout_.left.x - pad, layout_.board.y, layout_.left.width + pad * 2, layout_.board.height}, side_dark, unit);
+    draw_panel_bg(theme_, *comp_, {layout_.right.x - pad, layout_.board.y, layout_.right.width + pad * 2, layout_.board.height}, side_dark, unit);
+    if (settings_.show_beat_lane) draw_panel_bg(theme_, *comp_, layout_.lane, side_dark, unit);
 
     BoardStyle style;
     style.panel_opacity = settings_.board_opacity;

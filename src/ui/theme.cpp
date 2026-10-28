@@ -10,7 +10,7 @@
 namespace audrop::ui {
 namespace {
 
-Font load_font(const char* file, int size) {
+Font load_font(const char* file, int size, bool pixel) {
     // ASCII + Latin-1 + common typographic punctuation so most track titles render.
     std::vector<int> codepoints;
     for (int c = 32; c < 127; ++c) codepoints.push_back(c);
@@ -22,20 +22,35 @@ Font load_font(const char* file, int size) {
         TraceLog(LOG_WARNING, "audrop: missing font %s, using default", path.c_str());
         return GetFontDefault();
     }
-    GenTextureMipmaps(&f.texture);
-    SetTextureFilter(f.texture, TEXTURE_FILTER_TRILINEAR);
+    if (pixel) {
+        SetTextureFilter(f.texture, TEXTURE_FILTER_POINT);
+    } else {
+        GenTextureMipmaps(&f.texture);
+        SetTextureFilter(f.texture, TEXTURE_FILTER_TRILINEAR);
+    }
     return f;
 }
 
 const Font& pick(const Theme& th, FontWeight w) { return w == FontWeight::Bold ? th.bold : th.regular; }
+
+constexpr int kPixelFontPx = 8;
+
+// Final draw size: scaled by the theme, and for pixel fonts snapped to a whole multiple of the
+// font's 8px grid so every font pixel lands on whole screen pixels.
+float font_px(const Theme& th, float size) {
+    size *= th.font_scale;
+    if (!th.pixel_art) return size;
+    return static_cast<float>(kPixelFontPx * std::max(1, static_cast<int>(std::lround(size / kPixelFontPx))));
+}
 
 }  // namespace
 
 void load_theme(Theme& th, ThemeId id) {
     unload_theme(th);
     th = theme_spec(id);
-    th.regular = load_font(th.regular_file, 72);
-    th.bold = load_font(th.bold_file, 128);
+    // Pixel fonts are rasterized at their native size and only ever scaled up by whole steps.
+    th.regular = load_font(th.regular_file, th.pixel_art ? kPixelFontPx : 72, th.pixel_art);
+    th.bold = load_font(th.bold_file, th.pixel_art ? kPixelFontPx : 128, th.pixel_art);
     // Additive glows fade to black; alpha-blended ones must fade to transparent white or the
     // falloff turns into a grey halo.
     Image img = GenImageGradientRadial(128, 128, 0.0f, WHITE, th.additive_glow ? BLANK : Color{255, 255, 255, 0});
@@ -51,6 +66,12 @@ void unload_theme(Theme& th) {
     if (th.glow.id != 0) UnloadTexture(th.glow);
     th.regular = th.bold = Font{};
     th.glow = Texture2D{};
+}
+
+void Theme::set_level(int level) {
+    if (!level_palettes) return;
+    const auto& pair = level_colors[static_cast<std::size_t>((std::max(level, 1) - 1) % static_cast<int>(level_colors.size()))];
+    for (std::size_t i = 0; i < pieces.size(); ++i) pieces[i] = pair[piece_tone[i] == 2 ? 1 : 0];
 }
 
 void begin_glow(const Theme& th) { BeginBlendMode(th.additive_glow ? BLEND_ADDITIVE : BLEND_ALPHA); }
@@ -76,7 +97,7 @@ Color lerp(Color a, Color b, float t) {
 
 Vector2 measure(const Theme& th, std::string_view s, float size, FontWeight w, float spacing) {
     const std::string str(s);
-    return MeasureTextEx(pick(th, w), str.c_str(), size * th.font_scale, spacing * th.spacing_scale);
+    return MeasureTextEx(pick(th, w), str.c_str(), font_px(th, size), spacing * th.spacing_scale);
 }
 
 std::string ellipsize(const Theme& th, std::string_view s, float max_width, float size, FontWeight w, float spacing) {
@@ -101,10 +122,11 @@ std::string ellipsize(const Theme& th, std::string_view s, float max_width, floa
 
 void text(const Theme& th, std::string_view s, Vector2 pos, float size, Color c, FontWeight w, float spacing) {
     const std::string str(s);
-    size *= th.font_scale;
+    size = font_px(th, size);
     spacing *= th.spacing_scale;
-    // Soft drop shadow keeps text readable over bright visualizer presets.
-    const float off = std::max(1.0f, std::round(size * 0.05f));
+    // Soft drop shadow keeps text readable over bright visualizer presets; pixel fonts get a hard
+    // one-font-pixel shadow instead.
+    const float off = th.pixel_art ? size / kPixelFontPx : std::max(1.0f, std::round(size * 0.05f));
     const Color shadow = with_alpha(th.text_shadow, static_cast<float>(c.a) / 255.0f);
     DrawTextEx(pick(th, w), str.c_str(), {std::round(pos.x) + off, std::round(pos.y) + off}, size, spacing, shadow);
     DrawTextEx(pick(th, w), str.c_str(), {std::round(pos.x), std::round(pos.y)}, size, spacing, c);
@@ -134,7 +156,7 @@ void draw_glow(const Theme& th, Vector2 center, float radius, Color c) {
 
 void glow_text_centered(const Theme& th, std::string_view s, Vector2 center, float size, Color c, float glow,
                         FontWeight w, float spacing) {
-    if (glow > 0) {
+    if (glow > 0 && th.glow_gain > 0) {
         const Vector2 m = measure(th, s, size, w, spacing);
         begin_glow(th);
         const float r = std::max(m.x, m.y) * 0.6f;

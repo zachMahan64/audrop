@@ -1,6 +1,7 @@
 #include "viz/compositor.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace audrop::viz {
 namespace {
@@ -34,6 +35,8 @@ uniform vec4 wash;
 uniform int mode;
 uniform vec3 sky_top;
 uniform vec3 sky_bottom;
+uniform vec3 palette[55];
+const float bayer[16] = float[](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 void main() {
     vec3 c = texture(texture0, fragTexCoord).rgb;
     float l = dot(c, vec3(0.299, 0.587, 0.114));
@@ -48,6 +51,20 @@ void main() {
         vec3 base = mix(sky_bottom, sky_top, smoothstep(0.0, 1.0, fragTexCoord.y));
         vec3 glow = mix(wash.rgb, hue, 0.35) * lg * wash.a;
         col = 1.0 - (1.0 - base) * (1.0 - glow);
+    } else if (mode == 3) {
+        // Ordered dither, then the nearest palette colour.
+        int i = int(mod(gl_FragCoord.y, 4.0)) * 4 + int(mod(gl_FragCoord.x, 4.0));
+        vec3 q = clamp(g + (bayer[i] / 16.0 - 0.47) * 0.14, 0.0, 1.0);
+        float best = 1e9;
+        col = q;
+        for (int k = 0; k < 55; k++) {
+            vec3 e = q - palette[k];
+            float d = dot(e, e);
+            if (d < best) {
+                best = d;
+                col = palette[k];
+            }
+        }
     } else {
         col = mix(g, wash.rgb, wash.a);
     }
@@ -67,8 +84,11 @@ uniform vec4 waves[4];
 uniform int wave_count;
 uniform float wave_width;
 uniform float vignette;
+uniform float scan_strength;
+uniform float scan_period;
 void main() {
     vec2 px = vec2(fragTexCoord.x, 1.0 - fragTexCoord.y) * resolution;
+    float scan = 1.0 - scan_strength * step(0.67, fract(px.y / scan_period));
     vec2 disp = vec2(0.0);
     for (int i = 0; i < 4; i++) {
         if (i >= wave_count) break;
@@ -85,9 +105,18 @@ void main() {
     float v = smoothstep(1.0, 0.25, length(dir * vec2(1.0, resolution.y / resolution.x)) * 1.35);
     col *= mix(1.0, v, vignette);
     col += flash.rgb * flash.a;
-    finalColor = vec4(col, 1.0);
+    finalColor = vec4(col * scan, 1.0);
 }
 )";
+
+// NES (2C02) hardware palette, de-duplicated.
+constexpr unsigned kNesPalette[55] = {
+    0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400, 0x503000, 0x007800, 0x006800,
+    0x005800, 0x004058, 0x000000, 0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
+    0xAC7C00, 0x00B800, 0x00A800, 0x00A844, 0x008888, 0xF8F8F8, 0x3CBCFC, 0x6888FC, 0x9878F8, 0xF878F8, 0xF85898,
+    0xF87858, 0xFCA044, 0xF8B800, 0xB8F818, 0x58D854, 0x58F898, 0x00E8D8, 0x787878, 0xFCFCFC, 0xA4E4FC, 0xB8B8F8,
+    0xD8B8F8, 0xF8B8F8, 0xF8A4C0, 0xF0D0B0, 0xFCE0A8, 0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8,
+};
 
 // Source rectangle for drawing a render texture (stored bottom-up) right side up.
 Rectangle flipped(const Texture2D& t) {
@@ -106,6 +135,14 @@ Compositor::Compositor() {
     grade_mode_loc_ = GetShaderLocation(grade_, "mode");
     grade_sky_top_loc_ = GetShaderLocation(grade_, "sky_top");
     grade_sky_bottom_loc_ = GetShaderLocation(grade_, "sky_bottom");
+    grade_palette_loc_ = GetShaderLocation(grade_, "palette");
+    float palette[55 * 3];
+    for (int i = 0; i < 55; ++i) {
+        palette[i * 3 + 0] = static_cast<float>((kNesPalette[i] >> 16) & 0xFF) / 255.0f;
+        palette[i * 3 + 1] = static_cast<float>((kNesPalette[i] >> 8) & 0xFF) / 255.0f;
+        palette[i * 3 + 2] = static_cast<float>(kNesPalette[i] & 0xFF) / 255.0f;
+    }
+    SetShaderValueV(grade_, grade_palette_loc_, palette, SHADER_UNIFORM_VEC3, 55);
     post_ = LoadShaderFromMemory(nullptr, kPostFs);
     post_res_loc_ = GetShaderLocation(post_, "resolution");
     post_chroma_loc_ = GetShaderLocation(post_, "chroma");
@@ -114,6 +151,8 @@ Compositor::Compositor() {
     post_wave_count_loc_ = GetShaderLocation(post_, "wave_count");
     post_wave_width_loc_ = GetShaderLocation(post_, "wave_width");
     post_vignette_loc_ = GetShaderLocation(post_, "vignette");
+    post_scan_strength_loc_ = GetShaderLocation(post_, "scan_strength");
+    post_scan_period_loc_ = GetShaderLocation(post_, "scan_period");
 }
 
 Compositor::~Compositor() {
@@ -123,6 +162,7 @@ Compositor::~Compositor() {
     if (scene_.id) UnloadRenderTexture(scene_);
     if (blur_a_.id) UnloadRenderTexture(blur_a_);
     if (blur_b_.id) UnloadRenderTexture(blur_b_);
+    if (pixel_.id) UnloadRenderTexture(pixel_);
 }
 
 void Compositor::resize(int width, int height) {
@@ -140,6 +180,20 @@ void Compositor::resize(int width, int height) {
     blur_b_ = LoadRenderTexture(std::max(4, width / 4), std::max(4, height / 4));
     SetTextureFilter(blur_a_.texture, TEXTURE_FILTER_BILINEAR);
     SetTextureFilter(blur_b_.texture, TEXTURE_FILTER_BILINEAR);
+    // Pixel-art target: about 240 rows, at a whole-number scale of the screen.
+    if (pixel_.id) UnloadRenderTexture(pixel_);
+    pixel_factor_ = std::max(1, static_cast<int>(std::lround(static_cast<float>(height) / 240.0f)));
+    pixel_ = LoadRenderTexture((width + pixel_factor_ - 1) / pixel_factor_, (height + pixel_factor_ - 1) / pixel_factor_);
+}
+
+void Compositor::build_pixel(const Texture2D& viz, float brightness) {
+    if (grade_params_.mode != 3) return;
+    BeginTextureMode(pixel_);
+    begin_grade(brightness);
+    DrawTexturePro(viz, flipped(viz), {0, 0, static_cast<float>(pixel_.texture.width), static_cast<float>(pixel_.texture.height)},
+                   {0, 0}, 0, WHITE);
+    EndShaderMode();
+    EndTextureMode();
 }
 
 void Compositor::build_blur(const Texture2D& viz) {
@@ -187,12 +241,30 @@ void Compositor::begin_grade(float brightness) {
 }
 
 void Compositor::draw_viz(const Texture2D& viz, float brightness) {
+    if (grade_params_.mode == 3) {
+        // Already graded by build_pixel; scale up with hard pixel edges.
+        const Texture2D& t = pixel_.texture;
+        SetTextureFilter(t, TEXTURE_FILTER_POINT);
+        const float f = static_cast<float>(pixel_factor_);
+        DrawTexturePro(t, flipped(t), {0, 0, static_cast<float>(t.width) * f, static_cast<float>(t.height) * f}, {0, 0}, 0, WHITE);
+        return;
+    }
     begin_grade(brightness);
     DrawTexturePro(viz, flipped(viz), {0, 0, static_cast<float>(width_), static_cast<float>(height_)}, {0, 0}, 0, WHITE);
     EndShaderMode();
 }
 
 void Compositor::draw_frosted(Rectangle r, Color tint, float gloss) {
+    if (grade_params_.mode == 3) {
+        // Pixel art: the low-res visualizer, smoothly filtered, is a subtle blur of what's behind.
+        const Texture2D& t = pixel_.texture;
+        SetTextureFilter(t, TEXTURE_FILTER_BILINEAR);
+        const float f = static_cast<float>(pixel_factor_);
+        const Rectangle src{r.x / f, static_cast<float>(t.height) - (r.y + r.height) / f, r.width / f, -r.height / f};
+        DrawTexturePro(t, src, r, {0, 0}, 0, WHITE);
+        DrawRectangleRec(r, tint);
+        return;
+    }
     const Texture2D& t = blur_a_.texture;
     const float sx = static_cast<float>(t.width) / static_cast<float>(width_);
     const float sy = static_cast<float>(t.height) / static_cast<float>(height_);
@@ -233,6 +305,8 @@ void Compositor::present(const PostParams& p) {
     SetShaderValue(post_, post_wave_count_loc_, &p.wave_count, SHADER_UNIFORM_INT);
     SetShaderValue(post_, post_wave_width_loc_, &p.wave_width, SHADER_UNIFORM_FLOAT);
     SetShaderValue(post_, post_vignette_loc_, &p.vignette, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(post_, post_scan_strength_loc_, &p.scan_strength, SHADER_UNIFORM_FLOAT);
+    SetShaderValue(post_, post_scan_period_loc_, &p.scan_period, SHADER_UNIFORM_FLOAT);
     DrawTexturePro(scene_.texture, flipped(scene_.texture), {0, 0, res[0], res[1]}, {0, 0}, 0, WHITE);
     EndShaderMode();
 }

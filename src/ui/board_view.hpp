@@ -19,7 +19,9 @@ struct BoardLayout {
     Rectangle cell_rect(int x, int y) const;
 };
 
-BoardLayout compute_layout(float width, float height);
+// With `snap`, the cell size is rounded down to a multiple of 8 so pixel-art blocks get whole
+// fat pixels (cell / 8).
+BoardLayout compute_layout(float width, float height, bool snap = false);
 
 struct BoardStyle {
     float panel_opacity = 0.6f;  // frosted well tint strength
@@ -28,7 +30,10 @@ struct BoardStyle {
     Color pulse_color = WHITE;
 };
 
-void draw_block(const Theme& th, Rectangle r, Color c, float alpha);
+void draw_block(const Theme& th, Rectangle r, Color c, float alpha, game::PieceType type);
+// Panel background in the theme's style: frosted (or translucent) fill plus gloss or a chunky
+// border. `unit` is the border's pixel size (one fat pixel for pixel-art themes).
+void draw_panel_bg(const Theme& th, viz::Compositor& comp, Rectangle r, float opacity, float unit);
 void draw_piece_icon(const Theme& th, game::PieceType type, Vector2 center, float cell, float alpha);
 void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, const BoardLayout& L, const BoardStyle& st);
 

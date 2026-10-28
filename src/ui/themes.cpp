@@ -7,7 +7,7 @@
 namespace audrop::ui {
 namespace {
 
-constexpr std::string_view kKeys[] = {"drop", "milky", "frutiger"};
+constexpr std::string_view kKeys[] = {"drop", "milky", "frutiger", "retro"};
 static_assert(std::size(kKeys) == static_cast<std::size_t>(ThemeId::Count));
 
 // Dark neon glass over the full-colour visualizer.
@@ -128,12 +128,80 @@ Theme frutiger() {
     return t;
 }
 
+// 8-bit console look: pixel font and blocks, a dithered limited-palette visualizer, boxed
+// panels, scanlines and piece colours that change with the level.
+Theme retro() {
+    Theme t;
+    t.id = ThemeId::Retro;
+    t.name = "RETRO";
+    t.regular_file = "PressStart2P-Regular.ttf";
+    t.bold_file = "PressStart2P-Regular.ttf";
+    t.font_scale = 0.6f;
+    t.spacing_scale = 0.0f;
+    t.pixel_art = true;
+
+    t.text = {252, 252, 252, 255};
+    t.text_dim = {188, 188, 188, 255};
+    t.text_faint = {124, 124, 124, 255};
+    t.text_shadow = {0, 0, 0, 255};
+    t.accent = {60, 188, 252, 255};
+    t.accent2 = {248, 120, 88, 255};
+    t.panel = {0, 0, 0, 255};
+    t.line = {252, 252, 252, 255};
+
+    t.viz_grade = VizGrade::Nes;
+    t.frost = {0, 0, 16, 255};
+    t.boxed_panels = true;
+    t.box_light = {252, 252, 252, 255};
+    t.box_dark = {0, 0, 0, 255};
+    t.vignette = 0.0f;
+    t.scanlines = 0.2f;
+
+    t.blocks = BlockStyle::Pixel;
+    t.grid_alpha = 0.0f;
+    t.ghost_alpha = 0.0f;
+    t.glow_gain = 0.0f;
+    t.level_palettes = true;
+    // Own pairs picked from the NES master palette (not any game's level colours).
+    t.level_colors = {{
+        {{{248, 56, 0, 255}, {248, 184, 0, 255}}},
+        {{{0, 136, 136, 255}, {88, 248, 152, 255}}},
+        {{{104, 68, 252, 255}, {60, 188, 252, 255}}},
+        {{{168, 16, 0, 255}, {248, 120, 248, 255}}},
+        {{{0, 168, 68, 255}, {248, 216, 120, 255}}},
+        {{{0, 120, 248, 255}, {252, 160, 68, 255}}},
+        {{{216, 0, 204, 255}, {0, 232, 216, 255}}},
+        {{{172, 124, 0, 255}, {184, 248, 24, 255}}},
+        {{{0, 0, 188, 255}, {248, 120, 88, 255}}},
+        {{{152, 120, 248, 255}, {248, 184, 248, 255}}},
+    }};
+    t.piece_tone = {0, 0, 0, 1, 2, 1, 2};  // I O T hollow; S J colour 1; Z L colour 2
+    t.set_level(1);
+    t.flash = {252, 252, 252, 255};
+    t.tiers = {{
+        {60, 188, 252, 255},   // OK
+        {88, 216, 84, 255},    // GOOD
+        {248, 184, 0, 255},    // GREAT
+        {248, 120, 88, 255},   // AMAZING
+        {248, 120, 248, 255},  // PERFECT
+    }};
+    t.off_beat = {124, 124, 124, 255};
+    t.popup_big = {248, 184, 0, 255};
+    t.popup_all_clear = {248, 216, 120, 255};
+    t.popup_tspin = {248, 120, 248, 255};
+    t.popup_level = {60, 188, 252, 255};
+    t.popup_complete = {88, 216, 84, 255};
+    t.popup_game_over = {248, 56, 0, 255};
+    return t;
+}
+
 }  // namespace
 
 Theme theme_spec(ThemeId id) {
     switch (id) {
         case ThemeId::Milky: return milky();
         case ThemeId::Frutiger: return frutiger();
+        case ThemeId::Retro: return retro();
         case ThemeId::Drop:
         case ThemeId::Count: break;
     }

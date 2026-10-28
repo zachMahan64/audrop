@@ -69,9 +69,11 @@ void draw_hud(const Theme& th, const BoardLayout& L, const HudInfo& info) {
     const auto& s = g.stats();
     const float cell = L.cell;
     const float big = cell * 1.35f, mid = cell * 0.85f, small = cell * 0.55f;
+    // Breathing room between the panel's top edge and the HOLD / NEXT headings.
+    const float top_inset = cell * 0.35f;
 
     // --- left column: hold + mode progress ---
-    float y = L.left.y;
+    float y = L.left.y + top_inset;
     label(th, "HOLD", {L.left.x, y}, small, th.text_dim);
     y += small * 1.4f;
     DrawLineEx({L.left.x, y}, {L.left.x + L.left.width, y}, 1, with_alpha(th.line, 0.2f));
@@ -106,7 +108,7 @@ void draw_hud(const Theme& th, const BoardLayout& L, const HudInfo& info) {
     if (g.mode() != game::Mode::Ultra) stat_row(th, lx, lr, y, mid, "TIME", format_time(s.time, g.mode() == game::Mode::Sprint));
 
     // --- right column: next queue + score ---
-    y = L.right.y;
+    y = L.right.y + top_inset;
     label(th, "NEXT", {L.right.x, y}, small, th.text_dim);
     y += small * 1.4f;
     DrawLineEx({L.right.x, y}, {L.right.x + L.right.width, y}, 1, with_alpha(th.line, 0.2f));

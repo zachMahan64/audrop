@@ -24,6 +24,7 @@ struct Settings {
 
     // Visuals
     std::string theme = "drop";  // ui::theme_key()
+    bool pixel_snap = true;      // pixel-art themes: board cells snap to whole fat pixels
     float viz_brightness = 0.7f;
     float viz_resolution = 0.75f;
     float board_opacity = 0.6f;

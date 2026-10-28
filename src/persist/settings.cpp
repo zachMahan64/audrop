@@ -42,6 +42,7 @@ Settings load_settings() {
     get(j, "viz_brightness", s.viz_brightness);
     get(j, "viz_resolution", s.viz_resolution);
     get(j, "board_opacity", s.board_opacity);
+    get(j, "pixel_snap", s.pixel_snap);
     get(j, "preset_seconds", s.preset_seconds);
     get(j, "reduce_flashing", s.reduce_flashing);
     get(j, "screen_shake", s.screen_shake);
@@ -66,6 +67,7 @@ void save_settings(const Settings& s) {
         {"viz_brightness", s.viz_brightness},
         {"viz_resolution", s.viz_resolution},
         {"board_opacity", s.board_opacity},
+        {"pixel_snap", s.pixel_snap},
         {"preset_seconds", s.preset_seconds},
         {"reduce_flashing", s.reduce_flashing},
         {"screen_shake", s.screen_shake},

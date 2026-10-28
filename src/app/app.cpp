@@ -45,7 +45,7 @@ void App::init() {
     viz_ = viz::make_visualizer(static_cast<int>(static_cast<float>(screen_w_) * settings_.viz_resolution),
                                 static_cast<int>(static_cast<float>(screen_h_) * settings_.viz_resolution),
                                 settings_.preset_seconds);
-    layout_ = compute_layout(static_cast<float>(screen_w_), static_cast<float>(screen_h_));
+    update_layout();
 
     analysis_ = std::make_unique<audio::AnalysisWorker>();
     player_ = std::make_unique<audio::MusicPlayer>();
@@ -140,6 +140,7 @@ void App::apply_theme(ui::ThemeId id) {
     comp_->set_grade({static_cast<int>(theme_.viz_grade), theme_.viz_saturation, theme_.viz_wash, theme_.sky_top,
                       theme_.sky_bottom});
     effects_.set_theme(&theme_);
+    update_layout();
 }
 
 void App::go(Screen s) {
@@ -194,8 +195,13 @@ void App::handle_resize() {
         comp_->resize(w, h);
         viz_->resize(static_cast<int>(static_cast<float>(w) * settings_.viz_resolution),
                      static_cast<int>(static_cast<float>(h) * settings_.viz_resolution));
-        layout_ = compute_layout(static_cast<float>(w), static_cast<float>(h));
+        update_layout();
     }
+}
+
+void App::update_layout() {
+    layout_ = compute_layout(static_cast<float>(screen_w_), static_cast<float>(screen_h_),
+                             theme_.pixel_art && settings_.pixel_snap);
 }
 
 void App::handle_drops() {
@@ -339,10 +345,15 @@ void App::render(double frame_dt) {
 
     viz_->render(spectrum_, wall_);
     comp_->build_blur(viz_->texture());
+    const bool menu_screen = screen_ != Screen::Playing;
+    const float viz_brightness = settings_.viz_brightness * (menu_screen ? 0.75f : 1.0f);
+    if (theme_.pixel_art) comp_->build_pixel(viz_->texture(), viz_brightness);
+
+    // Level palettes recolour the pieces during a run; menus show the level 1 colours.
+    theme_.set_level(game_ && (screen_ == Screen::Playing || screen_ == Screen::Results) ? game_->stats().level : 1);
 
     comp_->begin_scene();
-    const bool menu_screen = screen_ != Screen::Playing;
-    comp_->draw_viz(viz_->texture(), settings_.viz_brightness * (menu_screen ? 0.75f : 1.0f));
+    comp_->draw_viz(viz_->texture(), viz_brightness);
     if (theme_.bubbles) {
         bubbles_.update(static_cast<float>(frame_dt), static_cast<float>(screen_w_), static_cast<float>(screen_h_),
                         effects_.beat_pulse());
@@ -365,6 +376,9 @@ void App::render(double frame_dt) {
     ClearBackground(BLACK);
     viz::PostParams post = screen_ == Screen::Playing ? effects_.post() : viz::PostParams{};
     post.vignette = theme_.vignette;
+    post.scan_strength = theme_.scanlines;
+    // One scanline per fat pixel row of the (snapped) blocks.
+    post.scan_period = std::max(2.0f, layout_.cell / 8.0f);
     comp_->present(post);
     EndDrawing();
     debug_after_present();
@@ -389,8 +403,8 @@ void App::draw_header(const char* title, const char* subtitle) {
 
 void App::draw_panel(Rectangle r, float pad) {
     const Rectangle p{r.x - pad, r.y - pad, r.width + pad * 2, r.height + pad * 2};
-    comp_->draw_frosted(p, with_alpha(theme_.frost, 0.55f), theme_.panel_gloss);
-    DrawRectangleLinesEx(p, 1, with_alpha(theme_.line, 0.08f));
+    draw_panel_bg(theme_, *comp_, p, 0.55f, layout_.cell / 8.0f);
+    if (!theme_.boxed_panels) DrawRectangleLinesEx(p, 1, with_alpha(theme_.line, 0.08f));
 }
 
 float App::draw_track_info(float size, float max_width) {

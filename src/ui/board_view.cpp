@@ -20,11 +20,31 @@ Rectangle inset_rect(Rectangle r, float fraction) {
     return {r.x + inset * 0.5f, r.y + inset * 0.5f, r.width - inset, r.height - inset};
 }
 
+// Chunky two-tone frame just outside `r`, optionally lit by `light`.
+void draw_box(const Theme& th, Rectangle r, float u, Color light) {
+    DrawRectangleLinesEx({r.x - 2 * u, r.y - 2 * u, r.width + 4 * u, r.height + 4 * u}, u, th.box_dark);
+    DrawRectangleLinesEx({r.x - u, r.y - u, r.width + 2 * u, r.height + 2 * u}, u, light);
+}
+
 // Landing preview for the active piece: tinted fill and piece-coloured outline, shaped like the theme's blocks.
 void draw_ghost(const Theme& th, Rectangle r, Color c) {
     const Color fill = with_alpha(lerp(c, WHITE, th.ghost_whiten), th.ghost_alpha);
     const Color edge = with_alpha(c, 0.55f);
     const float thick = std::max(1.0f, r.width * 0.05f);
+    if (th.blocks == BlockStyle::Pixel) {
+        // Dotted outline of the 7x7 tile, every other fat pixel.
+        const float u = r.width / 8.0f;
+        if (th.ghost_alpha > 0) DrawRectangleRec({r.x, r.y, 7 * u, 7 * u}, fill);
+        const Color dot = with_alpha(c, 0.85f);
+        for (int i = 0; i < 7; i += 2) {
+            const float o = static_cast<float>(i) * u;
+            DrawRectangleRec({r.x + o, r.y, u, u}, dot);
+            DrawRectangleRec({r.x + o, r.y + 6 * u, u, u}, dot);
+            DrawRectangleRec({r.x, r.y + o, u, u}, dot);
+            DrawRectangleRec({r.x + 6 * u, r.y + o, u, u}, dot);
+        }
+        return;
+    }
     if (th.blocks == BlockStyle::Glass) {
         DrawRectangleRec(r, fill);
         DrawRectangleLinesEx({r.x + 2, r.y + 2, r.width - 4, r.height - 4}, thick, edge);
@@ -48,11 +68,12 @@ Rectangle BoardLayout::cell_rect(int x, int y) const {
     return {p.x, p.y, cell, cell};
 }
 
-BoardLayout compute_layout(float width, float height) {
+BoardLayout compute_layout(float width, float height, bool snap) {
     BoardLayout L;
     const float rows = static_cast<float>(tuning::kVisibleRows);
     // Board (10) + two side columns (6 each) + gaps (1 each) = 24 cells wide.
     L.cell = std::floor(std::min(height * 0.8f / (rows + 1.5f), width * 0.94f / 24.0f));
+    if (snap) L.cell = std::max(8.0f, std::floor(L.cell / 8.0f) * 8.0f);
     const float bw = L.cell * Board::kWidth, bh = L.cell * rows;
     L.board = {std::floor((width - bw) / 2), std::floor((height - bh) / 2 - L.cell * 0.5f), bw, bh};
     L.left = {L.board.x - L.cell * 7, L.board.y, L.cell * 6, bh};
@@ -61,8 +82,30 @@ BoardLayout compute_layout(float width, float height) {
     return L;
 }
 
-void draw_block(const Theme& th, Rectangle r, Color c, float alpha) {
+void draw_panel_bg(const Theme& th, viz::Compositor& comp, Rectangle r, float opacity, float unit) {
+    comp.draw_frosted(r, with_alpha(th.frost, opacity), th.panel_gloss);
+    if (th.boxed_panels) draw_box(th, r, unit, th.box_light);
+}
+
+void draw_block(const Theme& th, Rectangle r, Color c, float alpha, game::PieceType type) {
     switch (th.blocks) {
+        case BlockStyle::Pixel: {
+            // 7x7 fat-pixel tile plus a one-pixel gap: hollow (white core) or solid with a glint.
+            const float u = r.width / 8.0f;
+            const auto px = [&](float x, float y, float w, float h, Color col) {
+                DrawRectangleRec({r.x + x * u, r.y + y * u, w * u, h * u}, col);
+            };
+            const Color shine = with_alpha(Color{252, 252, 252, 255}, alpha);
+            px(0, 0, 7, 7, with_alpha(c, alpha));
+            if (th.hollow(type)) {
+                px(1, 1, 5, 5, shine);
+            } else {
+                px(1, 1, 2, 1, shine);
+                px(1, 2, 1, 1, shine);
+            }
+            px(0, 0, 1, 1, shine);
+            break;
+        }
         case BlockStyle::Glass: {
             const float inset = std::max(1.0f, r.width * 0.04f);
             const Rectangle in{r.x + inset * 0.5f, r.y + inset * 0.5f, r.width - inset, r.height - inset};
@@ -119,7 +162,7 @@ void draw_piece_icon(const Theme& th, game::PieceType type, Vector2 center, floa
                   cell * 1.2f, with_alpha(c, 0.18f * alpha));
     end_glow();
     for (auto v : m)
-        draw_block(th, {ox + static_cast<float>(v.x) * cell, oy + static_cast<float>(v.y) * cell, cell, cell}, c, alpha);
+        draw_block(th, {ox + static_cast<float>(v.x) * cell, oy + static_cast<float>(v.y) * cell, cell, cell}, c, alpha, type);
 }
 
 void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, const BoardLayout& L, const BoardStyle& st) {
@@ -130,12 +173,18 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
     comp.draw_frosted(b, with_alpha(th.frost, st.panel_opacity), th.panel_gloss);
 
     // Grid.
-    const Color grid = with_alpha(th.line, 0.05f + 0.04f * st.beat_pulse);
-    for (int x = 1; x < Board::kWidth; ++x)
-        DrawLineEx({b.x + static_cast<float>(x) * cell, b.y}, {b.x + static_cast<float>(x) * cell, b.y + b.height}, 1, grid);
-    for (int y = 1; y < tuning::kVisibleRows; ++y)
-        DrawLineEx({b.x, b.y + static_cast<float>(y) * cell}, {b.x + b.width, b.y + static_cast<float>(y) * cell}, 1, grid);
+    if (th.grid_alpha > 0) {
+        const Color grid = with_alpha(th.line, th.grid_alpha + 0.04f * st.beat_pulse);
+        for (int x = 1; x < Board::kWidth; ++x)
+            DrawLineEx({b.x + static_cast<float>(x) * cell, b.y}, {b.x + static_cast<float>(x) * cell, b.y + b.height}, 1, grid);
+        for (int y = 1; y < tuning::kVisibleRows; ++y)
+            DrawLineEx({b.x, b.y + static_cast<float>(y) * cell}, {b.x + b.width, b.y + static_cast<float>(y) * cell}, 1, grid);
+    }
 
+    if (th.boxed_panels) {
+        // Chunky frame whose light edge flashes the pulse colour on beats and clears.
+        draw_box(th, b, cell / 8.0f, lerp(th.box_light, st.pulse_color, std::min(1.0f, st.beat_pulse + st.clear_glow)));
+    } else {
     // Well edges (open top), glowing on the beat.
     const float edge_a = 0.45f + 0.45f * st.beat_pulse + 0.4f * st.clear_glow;
     const Color edge = with_alpha(lerp(th.line, st.pulse_color, std::min(1.0f, st.beat_pulse + st.clear_glow)), std::min(1.0f, edge_a));
@@ -152,12 +201,14 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
                                static_cast<int>(b.height), gc, BLANK);
         end_glow();
     }
+    }
 
     // Collect cells to draw: locked, ghost, active.
     struct Cell {
         Rectangle r;
         Color c;
         float alpha;
+        game::PieceType type;
     };
     std::vector<Cell> cells;
     const auto& board = g.board();
@@ -165,7 +216,8 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
     for (int y = first_row; y < Board::kHeight; ++y)
         for (int x = 0; x < Board::kWidth; ++x)
             if (auto v = board.at(x, y))
-                cells.push_back({L.cell_rect(x, y), th.piece(game::cell_piece(v)), y < Board::kFirstVisibleRow ? 0.5f : 0.92f});
+                cells.push_back({L.cell_rect(x, y), th.piece(game::cell_piece(v)), y < Board::kFirstVisibleRow ? 0.5f : 0.92f,
+                                 game::cell_piece(v)});
 
     if (const auto& a = g.active()) {
         const Color c = th.piece(a->type);
@@ -181,7 +233,7 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
         const float lock = static_cast<float>(g.lock_progress());
         for (auto m : game::piece_minos(a->type, a->rot)) {
             if (a->y + m.y < first_row) continue;
-            cells.push_back({L.cell_rect(a->x + m.x, a->y + m.y), lerp(c, WHITE, 0.15f), 1.0f - 0.25f * lock});
+            cells.push_back({L.cell_rect(a->x + m.x, a->y + m.y), lerp(c, WHITE, 0.15f), 1.0f - 0.25f * lock, a->type});
         }
     }
 
@@ -189,7 +241,7 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
     for (const auto& c : cells)
         draw_glow(th, {c.r.x + c.r.width / 2, c.r.y + c.r.height / 2}, cell * 1.15f, with_alpha(c.c, 0.13f * c.alpha));
     end_glow();
-    for (const auto& c : cells) draw_block(th, c.r, c.c, c.alpha);
+    for (const auto& c : cells) draw_block(th, c.r, c.c, c.alpha, c.type);
 }
 
 }  // namespace audrop::ui

@@ -14,12 +14,13 @@ namespace audrop::ui {
 enum class FontWeight { Regular, Bold };
 
 // Selectable looks. Order is the order the THEME setting cycles through.
-enum class ThemeId { Drop, Milky, Frutiger, Count };
+enum class ThemeId { Drop, Milky, Frutiger, Retro, Count };
 
 enum class BlockStyle {
     Glass,  // translucent fill, top sheen, bright outline (Drop)
     Soft,   // opaque rounded tile with a soft shadow (Milky)
     Gel,    // glossy jelly tile: specular cap, bright bottom rim (Frutiger)
+    Pixel,  // 8x8 fat-pixel tile, hollow or solid per piece (Retro)
 };
 
 // How the visualizer is coloured before anything is drawn over it.
@@ -27,6 +28,7 @@ enum class VizGrade {
     Dark,    // desaturate, then mix towards `viz_wash` by its alpha
     Pastel,  // pastel hue tints over a `viz_wash` base (light themes)
     Sky,     // `sky_top` -> `sky_bottom` gradient, visualizer screened on as glowing highlights
+    Nes,     // pixelated to ~240 rows, dithered down to the NES hardware palette
 };
 
 // Everything that differs between themes. Fonts and the glow sprite are loaded by load_theme;
@@ -40,6 +42,9 @@ struct Theme {
     const char* bold_file = "Rajdhani-Bold.ttf";
     float font_scale = 1.0f;
     float spacing_scale = 1.0f;
+    // Pixel-art theme: the font is an 8px bitmap-style face drawn only at whole multiples of 8px,
+    // blocks are drawn in fat pixels (cell / 8), and the board can snap to whole fat pixels.
+    bool pixel_art = false;
     Font regular{};
     Font bold{};
     Texture2D glow{};  // soft radial sprite for glows/particles
@@ -64,11 +69,16 @@ struct Theme {
     bool bubbles = false;             // ambient rising bubbles over the background
     Color frost{6, 4, 16, 255};       // tint over frosted panels; alpha comes from the panel setting
     float panel_gloss = 0.0f;         // glassy sheen and rim on frosted panels (0 = none)
+    bool boxed_panels = false;        // chunky two-tone border around panels instead of a hairline
+    Color box_light{188, 188, 188, 255};
+    Color box_dark{80, 80, 80, 255};
     float vignette = 0.45f;
+    float scanlines = 0.0f;           // darkening of every scanline's lower third (0 = off)
 
     // Pieces and effects.
     std::array<Color, 7> pieces{};   // indexed by game::PieceType
     BlockStyle blocks = BlockStyle::Glass;
+    float grid_alpha = 0.05f;         // well grid lines
     float ghost_whiten = 0.0f;        // ghost fill: piece colour mixed this far towards white...
     float ghost_alpha = 0.10f;        // ...at this opacity (outline stays the piece colour)
     bool additive_glow = true;        // false = normal alpha blending (needed on light backgrounds)
@@ -84,7 +94,16 @@ struct Theme {
     Color popup_complete{140, 255, 200, 255};
     Color popup_game_over{255, 120, 150, 255};
 
+    // Retro: piece colours come from the current level's two-colour palette; `piece_tone` says
+    // which colour each piece uses and whether its block is hollow.
+    bool level_palettes = false;
+    std::array<std::array<Color, 2>, 10> level_colors{};
+    std::array<unsigned char, 7> piece_tone{};  // 0 = hollow in colour 1, 1 = solid colour 1, 2 = solid colour 2
+
     Color piece(game::PieceType t) const { return pieces[static_cast<std::size_t>(t)]; }
+    bool hollow(game::PieceType t) const { return level_palettes && piece_tone[static_cast<std::size_t>(t)] == 0; }
+    // Recolours `pieces` for `level` (1-based; palettes repeat). No-op without level palettes.
+    void set_level(int level);
 };
 
 Theme theme_spec(ThemeId id);

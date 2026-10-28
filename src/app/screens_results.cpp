@@ -1,6 +1,7 @@
 // End-of-run statistics screen.
 #include <raylib.h>
 
+#include <algorithm>
 #include <cstdio>
 
 #include "app/app.hpp"

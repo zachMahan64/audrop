@@ -14,6 +14,10 @@ endif()
 # Some dependencies declare ancient cmake_minimum_required versions.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+# raylib (policy 3.5) is the first to include CheckSourceCompiles, whose functions keep the policies
+# they were defined under. Without CMP0067, projectM's std::filesystem check ignores
+# CMAKE_CXX_STANDARD, fails on Apple clang (default C++14), and falls back to Boost.
+set(CMAKE_POLICY_DEFAULT_CMP0067 NEW)
 set(FETCHCONTENT_QUIET OFF)
 include(FetchContent)
 

@@ -31,6 +31,7 @@ Theme milky() {
     Theme t;
     t.id = ThemeId::Milky;
     t.name = "MILKY";
+    t.description = "Light mode: milky glass and soft pastels";
     t.regular_file = "Nunito-SemiBold.ttf";
     t.bold_file = "Nunito-ExtraBold.ttf";
     t.font_scale = 0.86f;
@@ -86,6 +87,7 @@ Theme frutiger() {
     Theme t;
     t.id = ThemeId::Frutiger;
     t.name = "FRUTIGER";
+    t.description = "Glossy aero gel, blue skies and bubbles";
     t.regular_file = "Selawik-Semibold.ttf";
     t.bold_file = "Selawik-Bold.ttf";
     t.font_scale = 0.88f;
@@ -134,6 +136,7 @@ Theme retro() {
     Theme t;
     t.id = ThemeId::Retro;
     t.name = "RETRO";
+    t.description = "8-bit pixel art and chiptune sounds";
     t.regular_file = "PressStart2P-Regular.ttf";
     t.bold_file = "PressStart2P-Regular.ttf";
     t.font_scale = 0.6f;
@@ -210,7 +213,7 @@ Theme theme_spec(ThemeId id) {
 
 ThemeId theme_from_key(std::string_view key) {
     const auto it = std::ranges::find(kKeys, key);
-    return it == std::end(kKeys) ? ThemeId::Drop : static_cast<ThemeId>(it - std::begin(kKeys));
+    return it == std::end(kKeys) ? ThemeId::Retro : static_cast<ThemeId>(it - std::begin(kKeys));
 }
 
 std::string_view theme_key(ThemeId id) { return kKeys[static_cast<std::size_t>(id)]; }

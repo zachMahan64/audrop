@@ -57,7 +57,10 @@ public:
             }
             if (!it->is_regular_file(ec) || it->path().extension() != ".milk") continue;
             const std::string rel = persist::path_to_utf8(fs::relative(it->path(), root_, ec));
-            if (blocked.contains(rel)) continue;
+            if (blocked.contains(rel)) {
+                banned_.push_back(persist::path_to_utf8(it->path()));
+                continue;
+            }
             files.push_back(persist::path_to_utf8(it->path()));
         }
         std::vector<const char*> ptrs;
@@ -127,6 +130,7 @@ public:
         if (!item) return;
         std::error_code ec;
         const std::string rel = persist::path_to_utf8(fs::relative(persist::utf8_to_path(item), root_, ec));
+        banned_.emplace_back(item);
         projectm_playlist_free_string(item);
         {
             std::ofstream out(blocklist_path(), std::ios::app);
@@ -137,6 +141,23 @@ public:
         if (projectm_playlist_size(playlist_) > 0)
             with_gl([&] { projectm_playlist_set_position(playlist_, std::min(pos, projectm_playlist_size(playlist_) - 1), true); });
     }
+
+    int unban_all() override {
+        std::error_code ec;
+        fs::remove(blocklist_path(), ec);
+        if (banned_.empty()) return 0;
+        std::vector<const char*> ptrs;
+        for (const auto& f : banned_) ptrs.push_back(f.c_str());
+        const bool was_empty = projectm_playlist_size(playlist_) == 0;
+        projectm_playlist_add_presets(playlist_, ptrs.data(), static_cast<uint32_t>(ptrs.size()), false);
+        if (was_empty) with_gl([&] { projectm_playlist_play_next(playlist_, true); });
+        const int n = static_cast<int>(banned_.size());
+        TraceLog(LOG_INFO, "audrop: unbanned %d presets", n);
+        banned_.clear();
+        return n;
+    }
+
+    int banned_count() const override { return static_cast<int>(banned_.size()); }
 
     std::string current_preset() const override {
         if (projectm_playlist_size(playlist_) == 0) return "(no presets found)";
@@ -153,6 +174,7 @@ private:
     projectm_handle pm_;
     projectm_playlist_handle playlist_ = nullptr;
     fs::path root_;
+    std::vector<std::string> banned_;  // absolute paths, so unban_all can add them back
     RenderTexture2D target_{};
 };
 

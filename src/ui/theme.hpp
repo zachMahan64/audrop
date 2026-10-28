@@ -39,6 +39,7 @@ struct Theme {
     const char* name = "DROP";
 
     // Fonts. Sizes and letter spacing passed to the text helpers are scaled by these.
+    const char* description = "Neon glass over the full-colour visualizer";
     const char* regular_file = "Rajdhani-SemiBold.ttf";
     const char* bold_file = "Rajdhani-Bold.ttf";
     float font_scale = 1.0f;
@@ -110,7 +111,7 @@ struct Theme {
 };
 
 Theme theme_spec(ThemeId id);
-ThemeId theme_from_key(std::string_view key);  // unknown keys give Drop
+ThemeId theme_from_key(std::string_view key);  // unknown keys give the default (Retro)
 std::string_view theme_key(ThemeId id);        // stable id for settings.json
 
 // Fills `theme` from theme_spec(id) and loads its fonts. Unloads anything previously loaded.

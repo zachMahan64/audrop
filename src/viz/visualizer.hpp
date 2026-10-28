@@ -25,6 +25,9 @@ public:
 
     virtual void next_preset(bool /*hard_cut*/) {}
     virtual void ban_current() {}
+    // Restores every banned preset (and clears the saved blocklist); returns how many came back.
+    virtual int unban_all() { return 0; }
+    virtual int banned_count() const { return 0; }
     virtual std::string current_preset() const { return {}; }
     virtual void set_preset_duration(double /*seconds*/) {}
     virtual bool supports_presets() const { return false; }

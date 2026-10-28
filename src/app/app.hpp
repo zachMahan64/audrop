@@ -26,7 +26,7 @@
 
 namespace audrop {
 
-enum class Screen { Title, ModeSelect, Playlist, Playing, Results, HighScores, Settings, Calibration };
+enum class Screen { Title, ModeSelect, Playlist, Playing, Results, HighScores, Settings, Themes, Calibration };
 
 class App {
 public:
@@ -73,6 +73,7 @@ private:
     void draw_title();
     void tick_mode_select();
     void draw_mode_select();
+    std::vector<ui::MenuItem> title_items() const;
     std::vector<ui::MenuItem> mode_items() const;
     void tick_playlist();
     void draw_playlist();
@@ -92,6 +93,10 @@ private:
     void draw_high_scores();
     void tick_settings();
     void draw_settings();
+    void open_themes();
+    void tick_themes();
+    void draw_themes();
+    std::vector<ui::MenuItem> theme_items() const;
     std::vector<ui::MenuItem> settings_items() const;
     void adjust_setting(int index, int dir);
     void start_calibration();
@@ -162,6 +167,7 @@ private:
     std::vector<double> cal_offsets_;
     sync::BeatGrid cal_grid_;
     Screen cal_return_ = Screen::Settings;
+    Screen themes_return_ = Screen::Title;
 
     std::string toast_;
     double toast_at_ = -100;

@@ -24,22 +24,28 @@ std::string best_label(game::Mode mode, const std::vector<persist::ScoreEntry>& 
 
 // --- title ------------------------------------------------------------------
 
-void App::tick_title() {
-    const std::vector<MenuItem> items{
+std::vector<MenuItem> App::title_items() const {
+    return {
         {"PLAY"},
         {"PLAYLIST", std::to_string(player_->size()) + " tracks"},
         {"HIGH SCORES"},
+        {"THEMES"},
         {"SETTINGS"},
         {"QUIT"},
     };
-    const auto r = menu_.update(items, menu_area(0.3f, 0.5f, 5, row_height()), row_height());
+}
+
+void App::tick_title() {
+    const auto items = title_items();
+    const auto r = menu_.update(items, menu_area(0.3f, 0.5f, static_cast<int>(items.size()), row_height()), row_height());
     if (r.action != MenuAction::Activate) return;
     switch (r.index) {
         case 0: go(Screen::ModeSelect); break;
         case 1: go(Screen::Playlist); break;
         case 2: go(Screen::HighScores); break;
-        case 3: go(Screen::Settings); break;
-        case 4: quit_ = true; break;
+        case 3: open_themes(); break;
+        case 4: go(Screen::Settings); break;
+        case 5: quit_ = true; break;
         default: break;
     }
 }
@@ -52,14 +58,8 @@ void App::draw_title() {
     text_centered(theme_, "DROP  TO  THE  BEAT", {w / 2, h * 0.3f + size * 0.62f}, size * 0.16f, theme_.text_dim,
                   FontWeight::Regular, size * 0.04f);
 
-    const std::vector<MenuItem> items{
-        {"PLAY"},
-        {"PLAYLIST", std::to_string(player_->size()) + " tracks"},
-        {"HIGH SCORES"},
-        {"SETTINGS"},
-        {"QUIT"},
-    };
-    const Rectangle area = menu_area(0.3f, 0.5f, 5, row_height());
+    const auto items = title_items();
+    const Rectangle area = menu_area(0.3f, 0.5f, static_cast<int>(items.size()), row_height());
     draw_panel(area, row_height() * 0.4f);
     menu_.draw(theme_, items, area, row_height());
     draw_now_playing();

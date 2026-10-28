@@ -59,7 +59,7 @@ playing across games.
 | Esc / P / F1 | pause |
 | `[` `]` | previous / next track (menus) |
 | Tab | next visual |
-| F8 | ban the current visual forever |
+| F8 | ban the current visual (Settings → UNBAN ALL VISUALS brings them back) |
 | F11 | fullscreen |
 
 Gamepads work too (d-pad, A/B rotate, Y 180°, bumpers hold, Start pause).

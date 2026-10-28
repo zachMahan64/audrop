@@ -105,7 +105,16 @@ void Menu::draw(const Theme& th, const std::vector<MenuItem>& items, Rectangle a
         float label_room = r.width - indent - right_pad;
         if (!it.value.empty()) label_room -= std::min(r.width * 0.5f, measure(th, it.value, size, FontWeight::Regular, 1.0f).x + row_height * 0.6f);
         const std::string label_fit = ellipsize(th, it.label, label_room, size, FontWeight::Regular, 1.5f);
-        text(th, label_fit, {r.x + indent, r.y + (row_height - size) / 2}, size, c, FontWeight::Regular, 1.5f);
+        float label_y = r.y + (row_height - size) / 2;
+        if (sel && !it.detail.empty()) {
+            // Label moves up to make room for the detail line; the pair stays centred in the row.
+            const float dsize = size * 0.6f;
+            const float gap = size * 0.2f, dh = measure(th, "A", dsize).y;
+            label_y -= (gap + dh) / 2;
+            text(th, ellipsize(th, it.detail, r.width - indent - right_pad, dsize),
+                 {r.x + indent, label_y + measure(th, "A", size).y + gap}, dsize, th.text_dim);
+        }
+        text(th, label_fit, {r.x + indent, label_y}, size, c, FontWeight::Regular, 1.5f);
         if (!it.value.empty()) {
             const float label_w = measure(th, label_fit, size, FontWeight::Regular, 1.5f).x;
             float room = r.width - right_pad - (indent + label_w + row_height * 0.6f);

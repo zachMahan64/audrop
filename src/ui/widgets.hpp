@@ -15,6 +15,7 @@ struct MenuItem {
     bool adjustable = false;
     bool enabled = true;
     std::string hint;      // shown below the menu when selected
+    std::string detail;    // shown in small text under the label when selected (needs tall rows)
 };
 
 enum class MenuAction { None, Activate, Left, Right, Back };

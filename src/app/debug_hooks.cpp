@@ -68,6 +68,7 @@ void App::init_debug_hooks() {
         const std::string_view v(sc);
         if (v == "playlist") go(Screen::Playlist);
         if (v == "settings") go(Screen::Settings);
+        if (v == "themes") open_themes();
         if (v == "scores") go(Screen::HighScores);
         if (v == "modes") go(Screen::ModeSelect);
         if (v == "calibration") start_calibration();

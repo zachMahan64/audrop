@@ -128,6 +128,7 @@ add_executable(audrop
     src/app/screens_playlist.cpp
     src/app/screens_results.cpp
     src/app/screens_settings.cpp
+    src/app/screens_themes.cpp
     src/app/screens_calibration.cpp
     src/app/debug_hooks.cpp
     src/audio/music_player.cpp

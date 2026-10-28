@@ -141,6 +141,7 @@ void App::apply_theme(ui::ThemeId id) {
     comp_->set_grade({static_cast<int>(theme_.viz_grade), theme_.viz_saturation, theme_.viz_wash, theme_.sky_top,
                       theme_.sky_bottom});
     effects_.set_theme(&theme_);
+    if (sfx_) sfx_->set_style(theme_.pixel_art ? audio::SfxStyle::Chip : audio::SfxStyle::Modern);
     update_layout();
 }
 
@@ -182,6 +183,7 @@ void App::tick(double dt) {
         case Screen::Results: tick_results(); break;
         case Screen::HighScores: tick_high_scores(); break;
         case Screen::Settings: tick_settings(); break;
+        case Screen::Themes: tick_themes(); break;
         case Screen::Calibration: tick_calibration(); break;
     }
 }
@@ -371,6 +373,7 @@ void App::render(double frame_dt) {
         case Screen::Results: draw_results(); break;
         case Screen::HighScores: draw_high_scores(); break;
         case Screen::Settings: draw_settings(); break;
+        case Screen::Themes: draw_themes(); break;
         case Screen::Calibration: draw_calibration(); break;
     }
     draw_toast();

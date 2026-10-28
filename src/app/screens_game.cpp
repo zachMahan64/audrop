@@ -60,7 +60,7 @@ bool pause_pressed() {
 constexpr double kCountdown = 1.2;
 constexpr double kEndDelay = 1.8;
 
-enum PauseRow { kResume, kRestart, kTrack, kOffset, kTempo, kVisual, kBanVisual, kSettings, kQuit };
+enum PauseRow { kResume, kRestart, kTrack, kOffset, kTempo, kVisual, kBanVisual, kThemes, kSettings, kQuit };
 
 }  // namespace
 
@@ -110,6 +110,7 @@ std::vector<MenuItem> App::pause_items() const {
         {"TEMPO", tempo, true, has_grid, "Fix tracks detected at half or double speed"},
         {"NEXT VISUAL", viz_->current_preset(), false, viz_->supports_presets()},
         {"BAN THIS VISUAL", "", false, viz_->supports_presets(), "Never show this projectM preset again"},
+        {"THEMES"},
         {"SETTINGS"},
         {"QUIT TO MENU"},
     };
@@ -152,6 +153,7 @@ void App::handle_pause_menu() {
             break;
         case kVisual: viz_->next_preset(false); break;
         case kBanVisual: viz_->ban_current(); break;
+        case kThemes: open_themes(); break;
         case kSettings: go(Screen::Settings); break;
         case kQuit:
             game_.reset();

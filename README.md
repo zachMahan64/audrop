@@ -114,8 +114,27 @@ Put your own `.milk` presets in `presets/` there to use them instead of the bund
   `AUDROP_DEBUG_SHOT=file.png` with `AUDROP_DEBUG_SHOT_AT=<seconds>` or
   `AUDROP_DEBUG_SHOT_CLEAR=<n>` (see `src/app/debug_hooks.cpp`).
 
-## Licenses
+## License
 
-audrop links libprojectM (LGPL-2.1) as a shared library. raylib and nativefiledialog-extended are
-zlib, nlohmann/json is MIT, the Rajdhani, Nunito, Selawik and Press Start 2P fonts are SIL OFL 1.1 (`assets/fonts/*-OFL.txt`), and the
-projectM preset packs carry their authors' licenses.
+Copyright 2026 Zach Mahan. Licensed under the [Apache License, Version 2.0](LICENSE).
+
+## Credits
+
+audrop uses [raylib](https://github.com/raysan5/raylib), [libprojectM](https://github.com/projectM-visualizer/projectm), [nativefiledialog-extended](https://github.com/btzy/nativefiledialog-extended), [nlohmann/json](https://github.com/nlohmann/json), and [doctest](https://github.com/doctest/doctest) 
+
+Visuals:
+
+- [MilkDrop](https://www.geisswerks.com/milkdrop/) by Ryan Geiss, whose preset format projectM
+  implements.
+- The [Cream of the Crop](https://github.com/projectM-visualizer/presets-cream-of-the-crop) preset
+  pack, curated by ISOSCELES. Each preset belongs to its original author; see the pack's
+  `LICENSE.md`.
+- The [MilkDrop texture pack](https://github.com/projectM-visualizer/presets-milkdrop-texture-pack)
+  maintained by the projectM team.
+
+All fonts under the SIL Open Font License 1.1: 
+
+- [Rajdhani](https://fonts.google.com/specimen/Rajdhani) by Indian Type Foundry
+- [Nunito](https://fonts.google.com/specimen/Nunito) by the Nunito Project Authors
+- [Selawik](https://github.com/microsoft/Selawik) by Microsoft
+- [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38

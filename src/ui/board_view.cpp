@@ -20,12 +20,6 @@ Rectangle inset_rect(Rectangle r, float fraction) {
     return {r.x + inset * 0.5f, r.y + inset * 0.5f, r.width - inset, r.height - inset};
 }
 
-// Chunky two-tone frame just outside `r`, optionally lit by `light`.
-void draw_box(const Theme& th, Rectangle r, float u, Color light) {
-    DrawRectangleLinesEx({r.x - 2 * u, r.y - 2 * u, r.width + 4 * u, r.height + 4 * u}, u, th.box_dark);
-    DrawRectangleLinesEx({r.x - u, r.y - u, r.width + 2 * u, r.height + 2 * u}, u, light);
-}
-
 // Landing preview for the active piece: tinted fill and piece-coloured outline, shaped like the theme's blocks.
 void draw_ghost(const Theme& th, Rectangle r, Color c) {
     const Color fill = with_alpha(lerp(c, WHITE, th.ghost_whiten), th.ghost_alpha);
@@ -80,6 +74,11 @@ BoardLayout compute_layout(float width, float height, bool snap) {
     L.right = {L.board.x + bw + L.cell, L.board.y, L.cell * 6, bh};
     L.lane = {L.board.x, L.board.y + bh + L.cell * 0.45f, bw, L.cell * 0.9f};
     return L;
+}
+
+void draw_box(const Theme& th, Rectangle r, float u, Color light) {
+    DrawRectangleLinesEx({r.x - 2 * u, r.y - 2 * u, r.width + 4 * u, r.height + 4 * u}, u, th.box_dark);
+    DrawRectangleLinesEx({r.x - u, r.y - u, r.width + 2 * u, r.height + 2 * u}, u, light);
 }
 
 void draw_panel_bg(const Theme& th, viz::Compositor& comp, Rectangle r, float opacity, float unit) {

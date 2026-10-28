@@ -1,6 +1,7 @@
 #include "ui/widgets.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace audrop::ui {
 namespace {
@@ -76,26 +77,42 @@ void Menu::draw(const Theme& th, const std::vector<MenuItem>& items, Rectangle a
     const int first = first_visible(n);
     const int shown = visible_rows_ > 0 ? std::min(n, visible_rows_) : n;
     const float size = row_height * 0.62f;
+    // Pixel themes leave room for the triangle cursor.
+    const float indent = th.pixel_art ? std::max(row_height * 0.45f, 6 * th.unit) : row_height * 0.45f;
+    const float right_pad = row_height * 0.3f;
     for (int i = 0; i < shown; ++i) {
         const int idx = first + i;
         const auto& it = items[static_cast<std::size_t>(idx)];
         const Rectangle r{area.x, area.y + static_cast<float>(i) * row_height, area.width, row_height};
         const bool sel = idx == selected_;
-        if (sel) {
+        if (sel && th.pixel_art) {
+            // Flat bar plus a stepped triangle cursor.
+            const float u = th.unit;
+            DrawRectangleRec({r.x, r.y + u, r.width, r.height - 2 * u}, with_alpha(th.accent, 0.25f));
+            const float cy = std::round((r.y + r.height / 2) / u) * u;
+            for (int k = 0; k < 3; ++k) {
+                const float h = static_cast<float>(5 - 2 * k) * u;
+                DrawRectangleRec({r.x + u + static_cast<float>(k) * u, cy - h / 2, u, h}, th.accent);
+            }
+        } else if (sel) {
             DrawRectangleGradientH(static_cast<int>(r.x), static_cast<int>(r.y + 2), static_cast<int>(r.width),
                                    static_cast<int>(r.height - 4), with_alpha(th.accent, 0.22f), with_alpha(th.accent, 0.0f));
             DrawRectangle(static_cast<int>(r.x), static_cast<int>(r.y + 4), 3, static_cast<int>(r.height - 8), th.accent);
         }
         const Color c = !it.enabled ? th.text_faint : (sel ? th.text : th.text_dim);
-        text(th, it.label, {r.x + row_height * 0.45f, r.y + (row_height - size) / 2}, size, c, FontWeight::Regular, 1.5f);
+        // Long labels (track titles) give up at most half the row to a value; long values
+        // (preset names) are then ellipsized to whatever room the label leaves.
+        float label_room = r.width - indent - right_pad;
+        if (!it.value.empty()) label_room -= std::min(r.width * 0.5f, measure(th, it.value, size, FontWeight::Regular, 1.0f).x + row_height * 0.6f);
+        const std::string label_fit = ellipsize(th, it.label, label_room, size, FontWeight::Regular, 1.5f);
+        text(th, label_fit, {r.x + indent, r.y + (row_height - size) / 2}, size, c, FontWeight::Regular, 1.5f);
         if (!it.value.empty()) {
-            // Long values (preset names, track titles) are ellipsized so they never run into the label.
-            const float label_w = measure(th, it.label, size, FontWeight::Regular, 1.5f).x;
-            float room = r.width - row_height * 0.3f - (row_height * 0.45f + label_w + row_height * 0.6f);
+            const float label_w = measure(th, label_fit, size, FontWeight::Regular, 1.5f).x;
+            float room = r.width - right_pad - (indent + label_w + row_height * 0.6f);
             if (it.adjustable) room -= measure(th, "<    >", size, FontWeight::Regular, 1.0f).x;
             const std::string fitted = ellipsize(th, it.value, room, size, FontWeight::Regular, 1.0f);
             std::string v = it.adjustable ? "<  " + fitted + "  >" : fitted;
-            text_right(th, v, {r.x + r.width - row_height * 0.3f, r.y + (row_height - size) / 2}, size,
+            text_right(th, v, {r.x + r.width - right_pad, r.y + (row_height - size) / 2}, size,
                        sel ? th.accent : th.text_dim, FontWeight::Regular, 1.0f);
         }
     }
@@ -103,12 +120,13 @@ void Menu::draw(const Theme& th, const std::vector<MenuItem>& items, Rectangle a
         const float track_h = row_height * static_cast<float>(shown);
         const float thumb_h = track_h * static_cast<float>(shown) / static_cast<float>(n);
         const float thumb_y = area.y + (track_h - thumb_h) * static_cast<float>(first) / static_cast<float>(n - shown);
-        DrawRectangleRec({area.x + area.width + 6, area.y, 2, track_h}, with_alpha(th.line, 0.1f));
-        DrawRectangleRec({area.x + area.width + 6, thumb_y, 2, thumb_h}, with_alpha(th.accent, 0.8f));
+        const float bar = th.pixel_art ? th.unit : 2.0f;
+        DrawRectangleRec({area.x + area.width + 6, area.y, bar, track_h}, with_alpha(th.line, 0.1f));
+        DrawRectangleRec({area.x + area.width + 6, thumb_y, bar, thumb_h}, with_alpha(th.accent, 0.8f));
     }
     if (selected_ >= 0 && selected_ < n && !items[static_cast<std::size_t>(selected_)].hint.empty())
         text(th, items[static_cast<std::size_t>(selected_)].hint,
-             {area.x + row_height * 0.45f, area.y + row_height * static_cast<float>(shown) + row_height * 0.4f},
+             {area.x + indent, area.y + row_height * static_cast<float>(shown) + row_height * 0.4f},
              size * 0.75f, th.text_faint);
 }
 

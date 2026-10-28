@@ -129,6 +129,7 @@ void App::apply_settings() {
     player_->set_volume(settings_.music_volume);
     sfx_->set_enabled(settings_.sfx_enabled);
     sfx_->set_volume(settings_.sfx_volume);
+    sfx_->set_style(theme_.pixel_art ? audio::SfxStyle::Chip : audio::SfxStyle::Modern);
     viz_->set_preset_duration(settings_.preset_seconds);
     effects_.set_options({settings_.reduce_flashing, settings_.screen_shake});
     if (settings_.vsync) SetWindowState(FLAG_VSYNC_HINT);
@@ -202,6 +203,9 @@ void App::handle_resize() {
 void App::update_layout() {
     layout_ = compute_layout(static_cast<float>(screen_w_), static_cast<float>(screen_h_),
                              theme_.pixel_art && settings_.pixel_snap);
+    // Pixel text never gets smaller than about half a block pixel per font pixel.
+    theme_.unit = layout_.cell / 8.0f;
+    theme_.min_font_steps = std::max(1, static_cast<int>(theme_.unit / 2.0f));
 }
 
 void App::handle_drops() {
@@ -434,16 +438,20 @@ void App::draw_now_playing() {
     const float h = static_cast<float>(screen_h_), w = static_cast<float>(screen_w_);
     const float size = std::clamp(h * 0.024f, 14.0f, 26.0f);
     const float y = h - size * 2.4f;
+    const std::string keys = "[ ] TRACK    TAB VISUAL    F8 BAN VISUAL    F11 FULLSCREEN";
+    const float keys_w = measure(theme_, keys, size * 0.7f, FontWeight::Regular, 1.5f).x;
+    // The track info gets whatever the key hints (wide with pixel fonts) leave free.
+    const float info_w = std::min(w * 0.45f, w - keys_w - size * 3);
     if (!track_title_.empty()) {
-        const float title_y = draw_track_info(size, w * 0.45f);
+        const float title_y = draw_track_info(size, info_w);
         label(theme_, "NOW PLAYING", {size, title_y - size * 1.05f}, size * 0.7f, theme_.text_faint);
     } else {
         text(theme_, "Drop music files or folders onto the window to start", {size, y}, size, theme_.text_dim);
     }
-    std::string keys = "[ ] TRACK    TAB VISUAL    F8 BAN VISUAL    F11 FULLSCREEN";
     text_right(theme_, keys, {w - size, y + size * 0.3f}, size * 0.7f, theme_.text_faint, FontWeight::Regular, 1.5f);
     if (viz_->supports_presets())
-        text_right(theme_, ellipsize(theme_, viz_->current_preset(), w * 0.4f, size * 0.7f), {w - size, y - size * 1.0f},
+        text_right(theme_, ellipsize(theme_, viz_->current_preset(), std::min(w * 0.4f, w - info_w - size * 3), size * 0.7f),
+                   {w - size, y - size * 1.0f},
                    size * 0.7f, with_alpha(theme_.text_faint, 0.7f));
 }
 
@@ -454,7 +462,12 @@ void App::draw_toast() {
     const float size = std::clamp(static_cast<float>(screen_h_) * 0.026f, 14.0f, 28.0f);
     const Vector2 m = measure(theme_, toast_, size);
     const Rectangle r{(static_cast<float>(screen_w_) - m.x) / 2 - size, size * 0.8f, m.x + size * 2, m.y + size * 0.6f};
-    DrawRectangleRounded(r, 0.5f, 8, with_alpha(theme_.panel, 0.8f * a));
+    if (theme_.boxed_panels) {
+        DrawRectangleRec(r, with_alpha(theme_.panel, 0.85f * a));
+        DrawRectangleLinesEx(r, theme_.unit, with_alpha(theme_.box_light, a));
+    } else {
+        DrawRectangleRounded(r, 0.5f, 8, with_alpha(theme_.panel, 0.8f * a));
+    }
     text_centered(theme_, toast_, {r.x + r.width / 2, r.y + r.height / 2}, size, with_alpha(theme_.text, a));
 }
 

@@ -157,18 +157,23 @@ void App::draw_high_scores() {
         y += size * 1.35f;
     }
 
-    // Lifetime.
+    // Lifetime (wraps upwards when a wide font needs more than one line).
     const auto& L = scores_.lifetime();
-    y = h * 0.8f;
-    label(theme_, "LIFETIME", {x0, y}, size * 0.7f, theme_.text_faint);
-    y += size * 1.3f;
     std::int64_t hits = 0;
     for (auto v : L.sync_tiers) hits += v;
     char line[256];
     std::snprintf(line, sizeof line, "%d games    %s played    %s lines    %s tetrises    %s T-spins    %s on-beat clears    best sync streak %d",
                   L.games, format_time(L.play_time, false).c_str(), format_int(L.lines).c_str(), format_int(L.tetrises).c_str(),
                   format_int(L.tspins).c_str(), format_int(hits).c_str(), L.best_sync_streak);
-    text(theme_, line, {x0, y}, size * 0.85f, theme_.text_dim);
+    const auto parts = wrap_segments(theme_, line, x1 - x0, size * 0.85f);
+    const float line_h = std::max(size * 1.2f, measure(theme_, "A", size * 0.85f).y * 1.5f);
+    y = h * 0.8f - line_h * static_cast<float>(parts.size() - 1);
+    label(theme_, "LIFETIME", {x0, y}, size * 0.7f, theme_.text_faint);
+    y += size * 1.3f;
+    for (const auto& part : parts) {
+        text(theme_, part, {x0, y}, size * 0.85f, theme_.text_dim);
+        y += line_h;
+    }
     text_centered(theme_, "<  >  CHANGE MODE      ESC  BACK", {w / 2, h * 0.93f}, size * 0.75f, theme_.text_faint, FontWeight::Regular, 2);
 }
 

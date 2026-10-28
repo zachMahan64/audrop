@@ -24,7 +24,17 @@ void Particles::update(float dt) {
     std::erase_if(items_, [](const Particle& p) { return p.life <= 0; });
 }
 
-void Particles::draw(const ui::Theme& th) const {
+void Particles::draw(const ui::Theme& th, float unit, Vector2 origin) const {
+    if (th.pixel_art) {
+        const auto snap = [unit](float v) { return std::round(v / unit) * unit; };
+        for (const auto& p : items_) {
+            const float t = std::clamp(p.life / p.max_life, 0.0f, 1.0f);
+            const float side = std::max(1.0f, std::round(p.size * (0.4f + 0.6f * t) * 0.6f / unit)) * unit;
+            DrawRectangleRec({origin.x + snap(p.pos.x - origin.x - side / 2), origin.y + snap(p.pos.y - origin.y - side / 2), side, side},
+                             p.color);
+        }
+        return;
+    }
     ui::begin_glow(th);
     for (const auto& p : items_) {
         const float t = std::clamp(p.life / p.max_life, 0.0f, 1.0f);

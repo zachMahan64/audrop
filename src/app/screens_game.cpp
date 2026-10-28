@@ -257,6 +257,10 @@ void App::draw_game() {
     Camera2D cam{};
     cam.zoom = 1;
     cam.offset = effects_.shake();
+    if (theme_.pixel_art) {  // shake in whole fat pixels
+        const float u = layout_.cell / 8.0f;
+        cam.offset = {std::round(cam.offset.x / u) * u, std::round(cam.offset.y / u) * u};
+    }
     BeginMode2D(cam);
 
     // Frosted side panels and lane strip keep the HUD legible over any preset.
@@ -309,7 +313,15 @@ void App::draw_game() {
         glow_text_centered(theme_, "PAUSED", {w / 2, h * 0.2f}, h * 0.08f, theme_.text, 0.6f, FontWeight::Bold, h * 0.01f);
         const auto items = pause_items();
         const float rh = row_height() * 0.9f;
-        pause_menu_.draw(theme_, items, menu_area(0.4f, 0.3f, static_cast<int>(items.size()), rh), rh);
+        const Rectangle area = menu_area(0.4f, 0.3f, static_cast<int>(items.size()), rh);
+        // Boxed themes put the menu in a solid dialog box so it reads cleanly over the board.
+        if (theme_.boxed_panels) {
+            const float pad = rh * 0.4f;
+            const Rectangle box{area.x - pad, area.y - pad, area.width + pad * 2, area.height + pad * 2};
+            DrawRectangleRec(box, with_alpha(theme_.panel, 0.85f));
+            draw_box(theme_, box, theme_.unit, theme_.box_light);
+        }
+        pause_menu_.draw(theme_, items, area, rh);
     }
 }
 

@@ -40,7 +40,7 @@ constexpr int kPixelFontPx = 8;
 float font_px(const Theme& th, float size) {
     size *= th.font_scale;
     if (!th.pixel_art) return size;
-    return static_cast<float>(kPixelFontPx * std::max(1, static_cast<int>(std::lround(size / kPixelFontPx))));
+    return static_cast<float>(kPixelFontPx * std::max(th.min_font_steps, static_cast<int>(std::lround(size / kPixelFontPx))));
 }
 
 }  // namespace
@@ -118,6 +118,32 @@ std::string ellipsize(const Theme& th, std::string_view s, float max_width, floa
         else hi = mid - 1;
     }
     return lo == 0 ? "\u2026" : with_dots(cuts[lo - 1]);
+}
+
+std::vector<std::string> wrap_segments(const Theme& th, std::string_view s, float max_width, float size, FontWeight w,
+                                       float spacing) {
+    std::vector<std::string> lines;
+    std::string line;
+    std::size_t pos = 0;
+    while (pos < s.size()) {
+        // Next segment plus the separator that precedes it.
+        std::size_t sep = s.find("   ", pos);
+        const std::size_t seg_end = sep == std::string_view::npos ? s.size() : sep;
+        const std::string_view seg = s.substr(pos, seg_end - pos);
+        std::size_t next = seg_end;
+        while (next < s.size() && s[next] == ' ') ++next;
+        const std::string_view gap = s.substr(seg_end, next - seg_end);
+        if (!line.empty() && measure(th, line + std::string(seg), size, w, spacing).x > max_width) {
+            while (!line.empty() && line.back() == ' ') line.pop_back();
+            lines.push_back(std::move(line));
+            line.clear();
+        }
+        line += std::string(seg) + std::string(gap);
+        pos = next;
+    }
+    while (!line.empty() && line.back() == ' ') line.pop_back();
+    if (!line.empty()) lines.push_back(std::move(line));
+    return lines;
 }
 
 void text(const Theme& th, std::string_view s, Vector2 pos, float size, Color c, FontWeight w, float spacing) {

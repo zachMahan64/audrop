@@ -135,7 +135,9 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
     clear_glow_ = std::max(clear_glow_, Ic);
     pulse_color_ = tier_color;
 
-    if (I >= tuning::kFxShockwave) {
+    // Pixel art has no smooth distortion: no shockwave or chromatic split.
+    const bool smooth = !th_->pixel_art;
+    if (smooth && I >= tuning::kFxShockwave) {
         Wave w;
         w.center = {cx, rows_y};
         const float diag = std::hypot(static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight()));
@@ -146,7 +148,7 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
         if (waves_.size() > 4) waves_.erase(waves_.begin());
     }
     if (I >= tuning::kFxScreenShake && opts_.screen_shake) trauma_ = std::min(1.0f, trauma_ + 0.3f + 0.5f * (I - tuning::kFxScreenShake));
-    if (I >= tuning::kFxChromatic) chroma_ = std::max(chroma_, opts_.reduce_flashing ? 3.0f : 4.0f + 12.0f * Ic);
+    if (smooth && I >= tuning::kFxChromatic) chroma_ = std::max(chroma_, opts_.reduce_flashing ? 3.0f : 4.0f + 12.0f * Ic);
     if (I >= tuning::kFxFullFlash && !opts_.reduce_flashing) {
         flash_ = std::max(flash_, 0.22f * Ic);
         flash_color_ = lerp(th_->flash, tier_color, 0.5f);
@@ -229,7 +231,38 @@ void Effects::update(float dt) {
     clear_glow_ *= std::exp(-2.5f * dt);
 }
 
+namespace {
+
+// Pixel effects blink rather than fade: on for one 50 ms frame, off for the next.
+bool blink_on(float age) { return static_cast<int>(age / 0.05f) % 2 == 0; }
+
+}  // namespace
+
+void Effects::draw_board_layer_pixel(const BoardLayout& L) const {
+    const float u = L.cell / 8.0f;
+    for (const auto& t : trails_) {
+        // Solid bands that thin out towards the top of the drop, in a few hard steps.
+        const float left = t.r.x - L.cell * 0.15f;
+        const int rows = std::max(1, static_cast<int>(std::lround(t.r.height / L.cell)));
+        const float fade = std::ceil((1.0f - t.t()) * 3.0f) / 3.0f;
+        for (int k = 0; k < rows; ++k) {
+            const float strength = std::ceil(static_cast<float>(rows - k) / static_cast<float>(rows) * 4.0f) / 4.0f;
+            DrawRectangleRec({left + u, t.r.y + t.r.height - static_cast<float>(k + 1) * L.cell, 5 * u, L.cell},
+                             with_alpha(t.color, 0.4f * strength * fade));
+        }
+    }
+    for (const auto& c : cells_)
+        if (c.t() < 0.5f) DrawRectangleRec({c.r.x, c.r.y, 7 * u, 7 * u}, with_alpha(c.color, 0.8f));
+    for (const auto& r : rows_) {
+        // Hard flash: solid for the first half, then blinking between the flash and judgment colours.
+        if (r.t() >= 0.5f && !blink_on(r.age)) continue;
+        const Color c = r.t() < 0.5f && blink_on(r.age) ? th_->flash : r.color;
+        DrawRectangleRec({L.board.x, r.y, L.board.width, r.height}, with_alpha(c, 0.85f));
+    }
+}
+
 void Effects::draw_board_layer(const Theme& th, const BoardLayout& L) const {
+    if (th.pixel_art) return draw_board_layer_pixel(L);
     begin_glow(th);
     for (const auto& t : trails_) {
         const float a = 1.0f - t.t();
@@ -251,19 +284,29 @@ void Effects::draw_board_layer(const Theme& th, const BoardLayout& L) const {
 }
 
 void Effects::draw_overlay(const Theme& th, const BoardLayout& L) const {
-    particles_.draw(th);
+    const float u = L.cell / 8.0f;
+    particles_.draw(th, u, {L.board.x, L.board.y});
     const float cell = L.cell;
     for (const auto& p : popups_) {
         const float t = p.t();
-        const float in = std::min(1.0f, p.age / 0.08f);
-        const float out = t > 0.7f ? 1.0f - (t - 0.7f) / 0.3f : 1.0f;
-        const float alpha = in * out;
-        const float pop = 1.0f + 0.35f * std::max(0.0f, 1.0f - p.age / 0.12f);
+        float alpha, pop, rise = 20.0f * t;
+        if (th.pixel_art) {
+            // Appear at once, blink out at the end, rise in whole pixels.
+            if (t > 0.7f && !blink_on(p.age)) continue;
+            alpha = 1.0f;
+            pop = p.age < 0.1f ? 1.25f : 1.0f;
+            rise = std::round(rise / u) * u;
+        } else {
+            const float in = std::min(1.0f, p.age / 0.08f);
+            const float out = t > 0.7f ? 1.0f - (t - 0.7f) / 0.3f : 1.0f;
+            alpha = in * out;
+            pop = 1.0f + 0.35f * std::max(0.0f, 1.0f - p.age / 0.12f);
+        }
         Vector2 at;
         float size;
         switch (p.slot) {
             case 0:
-                at = {L.board.x + L.board.width / 2, L.board.y + L.board.height * 0.3f - 20.0f * t};
+                at = {L.board.x + L.board.width / 2, L.board.y + L.board.height * 0.3f - rise};
                 size = cell * 1.25f * p.size * pop;
                 break;
             case 1:

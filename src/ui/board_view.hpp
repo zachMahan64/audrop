@@ -34,6 +34,8 @@ void draw_block(const Theme& th, Rectangle r, Color c, float alpha, game::PieceT
 // Panel background in the theme's style: frosted (or translucent) fill plus gloss or a chunky
 // border. `unit` is the border's pixel size (one fat pixel for pixel-art themes).
 void draw_panel_bg(const Theme& th, viz::Compositor& comp, Rectangle r, float opacity, float unit);
+// Chunky two-tone frame just outside `r` (boxed themes), its inner edge in `light`.
+void draw_box(const Theme& th, Rectangle r, float unit, Color light);
 void draw_piece_icon(const Theme& th, game::PieceType type, Vector2 center, float cell, float alpha);
 void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, const BoardLayout& L, const BoardStyle& st);
 

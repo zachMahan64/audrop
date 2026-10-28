@@ -133,6 +133,34 @@ inline constexpr WhooshParams kSfxClearBigWhoosh{5500, 180, 0.45, 0.45, false};
 // Layered on any clear that lands in a sync tier, scaled by the tier's fx_intensity.
 inline constexpr WhooshParams kSfxOnBeat{9000, 2500, 0.16, 1.0, true};
 
+// Chip style (Retro theme): 8-bit console voices. Pulse duty is the high fraction of each
+// cycle; envelopes and the triangle are quantized to 16 levels like the original hardware.
+struct ChipNote {
+    double hz;
+    double length_s;
+};
+inline constexpr double kChipLockHz = 880;          // short square blip
+inline constexpr double kChipLockLength = 0.07;
+inline constexpr double kChipDropStartHz = 330;     // triangle thump gliding down...
+inline constexpr double kChipDropEndHz = 55;        // ...to here
+inline constexpr double kChipDropLength = 0.2;
+inline constexpr double kChipClearStartHz = 300;    // pulse sweep up over the noise burst
+inline constexpr double kChipClearEndHz = 1500;
+inline constexpr double kChipClearLength = 0.4;
+inline constexpr ChipNote kChipArpeggio[] = {       // big clear: rising major arpeggio
+    {523.25, 0.055}, {659.26, 0.055}, {783.99, 0.055}, {1046.5, 0.055}, {1318.5, 0.055}, {1568.0, 0.3},
+};
+inline constexpr double kChipArpeggioBassHz = 130.81;
+inline constexpr double kChipBeatHz[] = {1567.98, 2093.0};  // on-beat two-note chime
+inline constexpr double kChipBeatNoteLength = 0.045;
+// Pulse waves in the 1-2 kHz range sound far louder than kicks at the same peak, so the chip
+// voices have their own (lower) peaks.
+inline constexpr float kChipLockPeak = 0.12f;
+inline constexpr float kChipHardDropPeak = 0.6f;
+inline constexpr float kChipClearPeak = 0.42f;
+inline constexpr float kChipClearBigPeak = 0.5f;
+inline constexpr float kChipOnBeatPeak = 0.09f;
+
 inline constexpr float kSfxLockPeak = 0.35f;
 inline constexpr float kSfxHardDropPeak = 0.8f;
 inline constexpr float kSfxClearPeak = 0.85f;

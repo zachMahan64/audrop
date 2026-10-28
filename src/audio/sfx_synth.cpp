@@ -85,6 +85,8 @@ public:
         p.decay_s *= vary(tuning::kSfxVaryTime);
         return p;
     }
+    double pitch() { return vary(tuning::kSfxVaryPitch); }
+    double time() { return vary(tuning::kSfxVaryTime); }
 
 private:
     double vary(double amount) { return on_ ? std::uniform_real_distribution(1.0 - amount, 1.0 + amount)(rng_) : 1.0; }
@@ -92,6 +94,98 @@ private:
     std::mt19937 rng_;
     bool on_;
 };
+
+// --- chip voices -------------------------------------------------------------
+
+// Volume stepped to 16 levels, like a 4-bit envelope.
+double quantize(double v) { return std::round(std::clamp(v, 0.0, 1.0) * 15.0) / 15.0; }
+
+double pulse(double phase, double duty) { return phase - std::floor(phase) < duty ? 1.0 : -1.0; }
+
+// 32-step triangle (16 levels up, 16 down).
+double triangle(double phase) {
+    const double step = std::floor((phase - std::floor(phase)) * 32.0);
+    const double level = step < 16 ? step : 31 - step;
+    return level / 7.5 - 1.0;
+}
+
+// Pitch glides exponentially from start_hz to end_hz over the sound's length.
+double glide(double t, double length, double start_hz, double end_hz) {
+    return start_hz * std::pow(end_hz / start_hz, std::min(1.0, t / length));
+}
+
+void ensure(std::vector<double>& out, std::size_t n) { out.resize(std::max(out.size(), n), 0.0); }
+
+void add_chip_lock(std::vector<double>& out, double hz) {
+    const std::size_t n = frames(tuning::kChipLockLength);
+    ensure(out, n);
+    double phase = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / kRate;
+        phase += (t < 0.012 ? hz : hz * 0.75) / kRate;  // two quick steps: bip-bup
+        out[i] += pulse(phase, 0.5) * quantize(1.0 - t / tuning::kChipLockLength);
+    }
+}
+
+void add_chip_drop(std::vector<double>& out, double start_hz, double end_hz, double length, Noise& noise) {
+    const std::size_t n = frames(length);
+    ensure(out, n);
+    double phase = 0, hold = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / kRate;
+        phase += glide(t, length * 0.5, start_hz, end_hz) / kRate;
+        if (i % 24 == 0) hold = noise.next();  // low-rate noise reads as a crunchy hit
+        out[i] += triangle(phase) * (t < length * 0.75 ? 1.0 : (length - t) / (length * 0.25)) +
+                  0.5 * hold * quantize(1.0 - t / 0.04);
+    }
+}
+
+void add_chip_clear(std::vector<double>& out, double start_hz, double end_hz, double length, Noise& noise) {
+    const std::size_t n = frames(length);
+    ensure(out, n);
+    double phase = 0, hold = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / kRate;
+        // Pitch moves in small steps, like a hardware sweep unit.
+        const double stepped_t = std::floor(t / 0.016) * 0.016;
+        phase += glide(stepped_t, length * 0.6, start_hz, end_hz) / kRate;
+        if (i % 6 == 0) hold = noise.next();
+        out[i] += 0.7 * pulse(phase, 0.25) * quantize(1.0 - t / length) + 0.6 * hold * quantize(1.0 - t / (length * 0.5));
+    }
+}
+
+void add_chip_arpeggio(std::vector<double>& out, double transpose, double tempo, Noise& noise) {
+    double total = 0;
+    for (const auto& note : tuning::kChipArpeggio) total += note.length_s * tempo;
+    const std::size_t n = frames(total);
+    ensure(out, n);
+    double phase = 0, bass = 0, hold = 0, start = 0;
+    std::size_t k = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / kRate;
+        while (k + 1 < std::size(tuning::kChipArpeggio) && t >= start + tuning::kChipArpeggio[k].length_s * tempo)
+            start += tuning::kChipArpeggio[k++].length_s * tempo;
+        const double note_t = t - start, note_len = tuning::kChipArpeggio[k].length_s * tempo;
+        phase += tuning::kChipArpeggio[k].hz * transpose / kRate;
+        bass += tuning::kChipArpeggioBassHz * transpose / kRate;
+        if (i % 10 == 0) hold = noise.next();
+        const double lead = pulse(phase, 0.125) * quantize(1.0 - 0.5 * note_t / note_len) * quantize(1.0 - 0.6 * t / total);
+        out[i] += 0.6 * lead + 0.5 * triangle(bass) * quantize(1.0 - t / total) + 0.4 * hold * quantize(1.0 - t / 0.12);
+    }
+}
+
+void add_chip_beat(std::vector<double>& out, double transpose) {
+    // Second note rings three times as long as the first.
+    const double len = tuning::kChipBeatNoteLength;
+    const std::size_t n = frames(len * 4);
+    ensure(out, n);
+    double phase = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / kRate;
+        phase += tuning::kChipBeatHz[t < len ? 0 : 1] * transpose / kRate;
+        out[i] += pulse(phase, 0.5) * quantize(t < len ? 1.0 : 1.0 - (t - len) / (len * 3));
+    }
+}
 
 std::vector<float> finish(std::vector<double>& s, float peak) {
     // Short fade so every sound ends exactly at zero.
@@ -105,9 +199,37 @@ std::vector<float> finish(std::vector<double>& s, float peak) {
     return out;
 }
 
+std::vector<float> render_chip(SfxId id, int take) {
+    std::vector<double> s;
+    Noise noise(static_cast<std::uint64_t>(take) + 100);
+    Variation v(id, take);
+    switch (id) {
+        case SfxId::Lock:
+            add_chip_lock(s, tuning::kChipLockHz * v.pitch());
+            return finish(s, tuning::kChipLockPeak);
+        case SfxId::HardDrop:
+            add_chip_drop(s, tuning::kChipDropStartHz * v.pitch(), tuning::kChipDropEndHz * v.pitch(),
+                          tuning::kChipDropLength * v.time(), noise);
+            return finish(s, tuning::kChipHardDropPeak);
+        case SfxId::Clear:
+            add_chip_clear(s, tuning::kChipClearStartHz * v.pitch(), tuning::kChipClearEndHz * v.pitch(),
+                           tuning::kChipClearLength * v.time(), noise);
+            return finish(s, tuning::kChipClearPeak);
+        case SfxId::ClearBig:
+            add_chip_arpeggio(s, v.pitch(), v.time(), noise);
+            return finish(s, tuning::kChipClearBigPeak);
+        case SfxId::OnBeat:
+            add_chip_beat(s, v.pitch());
+            return finish(s, tuning::kChipOnBeatPeak);
+        case SfxId::Count: break;
+    }
+    return {};
+}
+
 }  // namespace
 
-std::vector<float> render_sfx(SfxId id, int take) {
+std::vector<float> render_sfx(SfxId id, int take, SfxStyle style) {
+    if (style == SfxStyle::Chip) return render_chip(id, take);
     std::vector<double> s;
     Noise noise(static_cast<std::uint64_t>(take));
     Variation v(id, take);

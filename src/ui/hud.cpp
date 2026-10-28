@@ -16,8 +16,25 @@ std::string fmt(const char* f, double v) {
     return buf;
 }
 
+// Vertical step from a label to the value under it. Pixel fonts round small labels up, so
+// they get measured spacing instead.
+float below_label(const Theme& th, float size) {
+    return th.pixel_art ? measure(th, "A", size).y + 2 * th.unit : size * 1.2f;
+}
+
 void stat_row(const Theme& th, float x, float right, float& y, float size, std::string_view name, const std::string& value) {
-    label(th, name, {x, y + size * 0.12f}, size * 0.7f, th.text_dim);
+    const float label_size = size * 0.7f;
+    const float need = measure(th, name, label_size, FontWeight::Regular, label_size * 0.22f).x +
+                       measure(th, value, size).x + size * 0.5f;
+    if (x + need > right) {
+        // Too wide for one line (wide pixel fonts): value goes under the label.
+        label(th, name, {x, y}, label_size, th.text_dim);
+        y += below_label(th, label_size);
+        text_right(th, value, {right, y}, size, th.text, FontWeight::Regular);
+        y += size * 1.3f;
+        return;
+    }
+    label(th, name, {x, y + size * 0.12f}, label_size, th.text_dim);
     text_right(th, value, {right, y - size * 0.12f}, size, th.text, FontWeight::Regular);
     y += size * 1.15f;
 }
@@ -85,20 +102,20 @@ void draw_hud(const Theme& th, const BoardLayout& L, const HudInfo& info) {
     switch (g.mode()) {
         case game::Mode::Sprint:
             label(th, "LINES LEFT", {lx, y}, small, th.text_dim);
-            text(th, std::to_string(g.lines_remaining()), {lx, y + small * 1.2f}, big * 1.3f, th.text, FontWeight::Bold);
-            y += small * 1.2f + big * 1.5f;
+            text(th, std::to_string(g.lines_remaining()), {lx, y + below_label(th, small)}, big * 1.3f, th.text, FontWeight::Bold);
+            y += below_label(th, small) + big * 1.5f;
             break;
         case game::Mode::Ultra:
             label(th, "TIME LEFT", {lx, y}, small, th.text_dim);
-            text(th, format_time(g.time_remaining(), false), {lx, y + small * 1.2f}, big * 1.3f,
+            text(th, format_time(g.time_remaining(), false), {lx, y + below_label(th, small)}, big * 1.3f,
                  g.time_remaining() < 10 ? th.accent2 : th.text, FontWeight::Bold);
-            y += small * 1.2f + big * 1.5f;
+            y += below_label(th, small) + big * 1.5f;
             break;
         case game::Mode::Marathon:
         case game::Mode::Endless:
             label(th, "LEVEL", {lx, y}, small, th.text_dim);
-            text(th, std::to_string(s.level), {lx, y + small * 1.2f}, big * 1.3f, th.text, FontWeight::Bold);
-            y += small * 1.2f + big * 1.5f;
+            text(th, std::to_string(s.level), {lx, y + below_label(th, small)}, big * 1.3f, th.text, FontWeight::Bold);
+            y += below_label(th, small) + big * 1.5f;
             break;
     }
     if (g.mode() == game::Mode::Marathon)
@@ -123,8 +140,8 @@ void draw_hud(const Theme& th, const BoardLayout& L, const HudInfo& info) {
 
     const float rx = L.right.x, rr = L.right.x + L.right.width;
     label(th, "SCORE", {rx, y}, small, th.text_dim);
-    text(th, format_int(s.score), {rx, y + small * 1.2f}, big, th.text, FontWeight::Bold);
-    y += small * 1.2f + big * 1.25f;
+    text(th, format_int(s.score), {rx, y + below_label(th, small)}, big, th.text, FontWeight::Bold);
+    y += below_label(th, small) + big * 1.25f;
     if (!info.best.empty()) {
         label(th, "BEST " + info.best, {rx, y}, small * 0.9f, th.text_faint);
         y += small * 1.6f;

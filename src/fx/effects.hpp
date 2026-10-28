@@ -79,6 +79,7 @@ private:
     };
 
     float rand01() { return std::uniform_real_distribution<float>(0.0f, 1.0f)(rng_); }
+    void draw_board_layer_pixel(const ui::BoardLayout& L) const;
 
     FxOptions opts_;
     const ui::Theme* th_ = nullptr;

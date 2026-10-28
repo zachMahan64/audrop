@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "game/piece.hpp"
 
@@ -45,6 +46,8 @@ struct Theme {
     // Pixel-art theme: the font is an 8px bitmap-style face drawn only at whole multiples of 8px,
     // blocks are drawn in fat pixels (cell / 8), and the board can snap to whole fat pixels.
     bool pixel_art = false;
+    float unit = 1.0f;       // one fat pixel on screen (board cell / 8); set from the layout
+    int min_font_steps = 1;  // smallest pixel-font size, in multiples of 8px; set from the layout
     Font regular{};
     Font bold{};
     Texture2D glow{};  // soft radial sprite for glows/particles
@@ -127,6 +130,10 @@ Vector2 measure(const Theme& th, std::string_view s, float size, FontWeight w = 
 // Cuts `s` short with a trailing ellipsis so it fits in `max_width`; returns it unchanged if it already fits.
 std::string ellipsize(const Theme& th, std::string_view s, float max_width, float size, FontWeight w = FontWeight::Regular,
                       float spacing = 0);
+// Packs the segments of `s` (separated by runs of three or more spaces) into lines no wider
+// than `max_width`; segments keep their original separators within a line.
+std::vector<std::string> wrap_segments(const Theme& th, std::string_view s, float max_width, float size,
+                                       FontWeight w = FontWeight::Regular, float spacing = 0);
 void text(const Theme& th, std::string_view s, Vector2 pos, float size, Color c, FontWeight w = FontWeight::Regular,
           float spacing = 0);
 void text_centered(const Theme& th, std::string_view s, Vector2 center, float size, Color c,

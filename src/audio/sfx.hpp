@@ -22,6 +22,7 @@ public:
 
     void set_enabled(bool on) { enabled_ = on; }
     void set_volume(float v) { volume_ = v; }
+    void set_style(SfxStyle s) { style_ = s; }
     // `gain` (0..1) scales this one playback on top of the volume setting. Picks a random
     // take (never the same one twice in a row) and jitters its pitch and gain.
     void play(SfxId id, float gain = 1.0f);
@@ -35,7 +36,9 @@ private:
         std::array<Take, tuning::kSfxTakes> takes{};
         int last = -1;
     };
-    std::array<Slot, static_cast<std::size_t>(SfxId::Count)> slots_{};
+    using Slots = std::array<Slot, static_cast<std::size_t>(SfxId::Count)>;
+    std::array<Slots, static_cast<std::size_t>(SfxStyle::Count)> styles_{};
+    SfxStyle style_ = SfxStyle::Modern;
     std::mt19937 rng_{std::random_device{}()};
     bool enabled_ = true;
     float volume_ = 0.8f;

@@ -23,7 +23,8 @@ class Particles {
 public:
     void spawn(const Particle& p);
     void update(float dt);
-    void draw(const ui::Theme& th) const;
+    // Pixel-art themes draw solid squares snapped to a `unit` grid anchored at `origin`.
+    void draw(const ui::Theme& th, float unit, Vector2 origin) const;
     void clear() { items_.clear(); }
     std::size_t size() const { return items_.size(); }
 

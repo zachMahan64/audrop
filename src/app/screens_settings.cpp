@@ -162,10 +162,18 @@ void App::draw_settings() {
     draw_panel({area.x, area.y, area.width, area.height + rh}, rh * 0.5f);
     menu_.draw(theme_, items, area, rh);
     const float w = static_cast<float>(screen_w_), h = static_cast<float>(screen_h_);
-    text_centered(theme_,
-                  "CONTROLS:  LEFT/RIGHT move   DOWN soft drop   UP/SPACE hard drop   X rotate   Z/CTRL rotate left   "
-                  "A 180   SHIFT/C hold   ESC pause",
-                  {w / 2, h * 0.95f}, std::clamp(h * 0.018f, 11.0f, 20.0f), theme_.text_faint, FontWeight::Regular, 1);
+    const float size = std::clamp(h * 0.018f, 11.0f, 20.0f);
+    const auto lines = wrap_segments(theme_,
+                                     "CONTROLS:   LEFT/RIGHT move   DOWN soft drop   UP/SPACE hard drop   X rotate   "
+                                     "Z/CTRL rotate left   A 180   SHIFT/C hold   ESC pause",
+                                     w * 0.94f, size, FontWeight::Regular, 1);
+    // Wrapped lines (wide pixel fonts) stack upwards from the usual baseline.
+    const float line_h = measure(theme_, "A", size).y * 1.5f;
+    float y = h * 0.95f - line_h * static_cast<float>(lines.size() - 1);
+    for (const auto& line : lines) {
+        text_centered(theme_, line, {w / 2, y}, size, theme_.text_faint, FontWeight::Regular, 1);
+        y += line_h;
+    }
 }
 
 }  // namespace audrop

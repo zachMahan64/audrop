@@ -49,6 +49,7 @@ void App::init() {
 
     analysis_ = std::make_unique<audio::AnalysisWorker>();
     player_ = std::make_unique<audio::MusicPlayer>();
+    sfx_ = std::make_unique<audio::Sfx>();
     apply_settings();
     load_playlist();
     init_debug_hooks();
@@ -59,6 +60,7 @@ void App::shutdown() {
     persist::save_settings(settings_);
     game_.reset();
     player_.reset();
+    sfx_.reset();
     analysis_.reset();
     viz_.reset();
     comp_.reset();
@@ -125,6 +127,8 @@ std::string App::beat_status() const {
 
 void App::apply_settings() {
     player_->set_volume(settings_.music_volume);
+    sfx_->set_enabled(settings_.sfx_enabled);
+    sfx_->set_volume(settings_.sfx_volume);
     viz_->set_preset_duration(settings_.preset_seconds);
     effects_.set_options({settings_.reduce_flashing, settings_.screen_shake});
     if (settings_.vsync) SetWindowState(FLAG_VSYNC_HINT);

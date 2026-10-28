@@ -10,6 +10,7 @@
 
 #include "audio/analysis_worker.hpp"
 #include "audio/music_player.hpp"
+#include "audio/sfx.hpp"
 #include "audio/spectrum.hpp"
 #include "fx/effects.hpp"
 #include "game/game.hpp"
@@ -76,6 +77,7 @@ private:
     void start_game(game::Mode mode);
     void tick_game(double dt);
     void draw_game();
+    void play_event_sfx(const std::vector<game::GameEvent>& events);
     std::vector<ui::MenuItem> pause_items() const;
     void handle_pause_menu();
     void set_paused(bool paused);
@@ -104,6 +106,7 @@ private:
     persist::ScoreBook scores_;
     std::unique_ptr<audio::MusicPlayer> player_;
     std::unique_ptr<audio::AnalysisWorker> analysis_;
+    std::unique_ptr<audio::Sfx> sfx_;
     audio::Spectrum spectrum_;
     std::unique_ptr<viz::Visualizer> viz_;
     std::unique_ptr<viz::Compositor> comp_;

@@ -13,6 +13,8 @@ struct Settings {
 
     // Audio
     float music_volume = 0.8f;
+    bool sfx_enabled = true;
+    float sfx_volume = 0.8f;
 
     // Sync
     double calibration_ms = 0;  // subtracted from the audio clock when judging

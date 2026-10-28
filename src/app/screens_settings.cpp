@@ -19,6 +19,8 @@ enum Row {
     kSoftDrop,
     k180,
     kVolume,
+    kSfx,
+    kSfxVolume,
     kVizBrightness,
     kVizResolution,
     kPanel,
@@ -63,6 +65,8 @@ std::vector<MenuItem> App::settings_items() const {
         {"SOFT DROP SPEED", s.soft_drop_factor >= tuning::kInstantSoftDropFactor ? "INSTANT" : std::to_string(static_cast<int>(s.soft_drop_factor)) + "x", true},
         {"180 ROTATION (A)", on_off(s.allow_180), true},
         {"MUSIC VOLUME", pct(s.music_volume), true},
+        {"SOUND EFFECTS", on_off(s.sfx_enabled), true, true, "Drop and line clear sounds. Turn off to hear only the music"},
+        {"SFX VOLUME", pct(s.sfx_volume), true, s.sfx_enabled},
         {"VISUALIZER BRIGHTNESS", pct(s.viz_brightness), true},
         {"VISUALIZER RESOLUTION", pct(s.viz_resolution), true, true, "Lower is faster on weak GPUs"},
         {"BOARD PANEL DARKNESS", pct(s.board_opacity), true},
@@ -87,6 +91,11 @@ void App::adjust_setting(int index, int dir) {
         case kSoftDrop: s.soft_drop_factor = step_in(kSoftDropSteps, s.soft_drop_factor, dir); break;
         case k180: s.allow_180 = !s.allow_180; break;
         case kVolume: s.music_volume = std::clamp(s.music_volume + 0.05f * static_cast<float>(dir), 0.0f, 1.0f); break;
+        case kSfx: s.sfx_enabled = !s.sfx_enabled; break;
+        case kSfxVolume:
+            if (!s.sfx_enabled) return;
+            s.sfx_volume = std::clamp(s.sfx_volume + 0.05f * static_cast<float>(dir), 0.0f, 1.0f);
+            break;
         case kVizBrightness: s.viz_brightness = std::clamp(s.viz_brightness + 0.05f * static_cast<float>(dir), 0.1f, 1.3f); break;
         case kVizResolution: s.viz_resolution = step_in(kResolutionSteps, s.viz_resolution, dir); break;
         case kPanel: s.board_opacity = std::clamp(s.board_opacity + 0.05f * static_cast<float>(dir), 0.0f, 0.95f); break;
@@ -105,6 +114,8 @@ void App::adjust_setting(int index, int dir) {
     }
     apply_settings();
     persist::save_settings(s);
+    // Let the player hear the new level.
+    if (index == kSfx || index == kSfxVolume) sfx_->play(audio::SfxId::HardDrop);
 }
 
 void App::tick_settings() {

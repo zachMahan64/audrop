@@ -98,6 +98,64 @@ inline constexpr int kParticlesPerCellBase = 6;
 inline constexpr int kParticlesPerCellMax = 40;
 
 // ---------------------------------------------------------------------------
+// Sound effects (synthesized at startup, see audio/sfx_synth.cpp)
+//
+// Every sound is normalized to its `*Peak` level (0..1) before the SFX volume setting
+// applies, so the peaks set the relative loudness of the sounds.
+// ---------------------------------------------------------------------------
+struct KickParams {
+    double start_hz;  // pitch at the attack...
+    double end_hz;    // ...gliding down to this
+    double glide_s;   // pitch glide time constant
+    double decay_s;   // amplitude decay time constant
+    double length_s;
+    double click;     // noise transient level relative to the body
+    double drive;     // tanh saturation (1 = clean, higher = grittier)
+};
+// Filtered noise layered on clears; the filter cutoff sweeps from start_hz to end_hz.
+struct WhooshParams {
+    double start_hz;
+    double end_hz;
+    double decay_s;
+    double level;     // relative to the kick body
+    bool highpass;    // false = low-passed rumble, true = bright hiss
+};
+
+inline constexpr KickParams kSfxLock{120, 62, 0.018, 0.045, 0.16, 0.12, 1.0};
+inline constexpr KickParams kSfxHardDrop{165, 46, 0.028, 0.11, 0.38, 0.35, 1.6};
+inline constexpr KickParams kSfxClear{150, 42, 0.045, 0.30, 0.95, 0.30, 1.8};
+inline constexpr WhooshParams kSfxClearWhoosh{3200, 250, 0.22, 0.35, false};
+// Tetris, T-spin and all clear: heavier kick plus a slower sub layer underneath.
+inline constexpr KickParams kSfxClearBig{190, 36, 0.07, 0.55, 1.7, 0.40, 2.6};
+inline constexpr KickParams kSfxClearBigSub{80, 30, 0.12, 0.8, 1.7, 0.0, 1.0};
+inline constexpr double kSfxClearBigSubLevel = 0.6;
+inline constexpr WhooshParams kSfxClearBigWhoosh{5500, 180, 0.45, 0.45, false};
+// Layered on any clear that lands in a sync tier, scaled by the tier's fx_intensity.
+inline constexpr WhooshParams kSfxOnBeat{9000, 2500, 0.16, 1.0, true};
+
+inline constexpr float kSfxLockPeak = 0.35f;
+inline constexpr float kSfxHardDropPeak = 0.8f;
+inline constexpr float kSfxClearPeak = 0.85f;
+inline constexpr float kSfxClearBigPeak = 0.95f;
+inline constexpr float kSfxOnBeatPeak = 0.25f;
+
+inline constexpr float kSfxHardDropMinGain = 0.75f;  // 0-row drop; rises to 1 at kSfxHardDropFullRows
+inline constexpr int kSfxHardDropFullRows = 20;
+inline constexpr float kSfxOnBeatMinGain = 0.5f;     // on-beat gain = min + (1 - min) * tier fx_intensity
+inline constexpr int kSfxVoices = 4;                 // overlapping copies of each take
+
+// Variety: each sound is rendered as several takes with randomized parameters (take 0 is
+// exactly the values above), and every playback adds a little pitch and gain jitter.
+// Amounts are ± fractions.
+inline constexpr int kSfxTakes = 4;
+inline constexpr double kSfxVaryPitch = 0.06;   // kick start / end pitch
+inline constexpr double kSfxVaryTime = 0.12;    // glide and decay times
+inline constexpr double kSfxVaryClick = 0.3;    // attack click level
+inline constexpr double kSfxVaryFilter = 0.2;   // whoosh filter sweep
+inline constexpr float kSfxPlayPitch = 0.025f;  // playback rate per play
+inline constexpr float kSfxPlayGain = 0.12f;    // volume per play
+
+// ---------------------------------------------------------------------------
 // Loop timing
 // ---------------------------------------------------------------------------
 inline constexpr double kLogicHz = 1000.0;  // input polling / game stepping rate

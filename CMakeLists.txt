@@ -107,6 +107,7 @@ add_library(audrop_core STATIC
     src/sync/judge.cpp
     src/audio/beat_tracker.cpp
     src/audio/tags.cpp
+    src/audio/sfx_synth.cpp
 )
 target_include_directories(audrop_core PUBLIC src)
 target_compile_features(audrop_core PUBLIC cxx_std_23)
@@ -130,6 +131,7 @@ add_executable(audrop
     src/app/screens_calibration.cpp
     src/app/debug_hooks.cpp
     src/audio/music_player.cpp
+    src/audio/sfx.cpp
     src/audio/analysis_worker.cpp
     src/audio/spectrum.cpp
     src/viz/visualizer.cpp
@@ -192,6 +194,7 @@ if(AUDROP_BUILD_TESTS)
         tests/test_sync.cpp
         tests/test_beat_tracker.cpp
         tests/test_tags.cpp
+        tests/test_sfx.cpp
     )
     target_link_libraries(audrop_tests PRIVATE audrop_core doctest::doctest)
     add_test(NAME audrop_tests COMMAND audrop_tests)

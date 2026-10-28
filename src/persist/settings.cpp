@@ -34,6 +34,8 @@ Settings load_settings() {
     get(j, "soft_drop_factor", s.soft_drop_factor);
     get(j, "allow_180", s.allow_180);
     get(j, "music_volume", s.music_volume);
+    get(j, "sfx_enabled", s.sfx_enabled);
+    get(j, "sfx_volume", s.sfx_volume);
     get(j, "calibration_ms", s.calibration_ms);
     get(j, "subdivide_beats", s.subdivide_beats);
     get(j, "viz_brightness", s.viz_brightness);
@@ -55,6 +57,8 @@ void save_settings(const Settings& s) {
         {"soft_drop_factor", s.soft_drop_factor},
         {"allow_180", s.allow_180},
         {"music_volume", s.music_volume},
+        {"sfx_enabled", s.sfx_enabled},
+        {"sfx_volume", s.sfx_volume},
         {"calibration_ms", s.calibration_ms},
         {"subdivide_beats", s.subdivide_beats},
         {"viz_brightness", s.viz_brightness},

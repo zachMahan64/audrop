@@ -202,7 +202,9 @@ void App::tick_game(double dt) {
     }
     game_->update(dt);
 
-    for (const auto& ev : game_->take_events()) {
+    const auto events = game_->take_events();
+    play_event_sfx(events);
+    for (const auto& ev : events) {
         std::visit(
             [&](const auto& e) {
                 using T = std::decay_t<decltype(e)>;
@@ -225,6 +227,28 @@ void App::tick_game(double dt) {
                 }
             },
             ev);
+    }
+}
+
+void App::play_event_sfx(const std::vector<game::GameEvent>& events) {
+    // A clear brings its own impact, so the lock that caused it stays silent.
+    const bool clearing = std::ranges::any_of(events, [](const auto& ev) { return std::holds_alternative<game::LineClearEvent>(ev); });
+    for (const auto& ev : events) {
+        if (const auto* lock = std::get_if<game::PieceLockedEvent>(&ev); lock && !clearing) {
+            if (lock->hard_drop) {
+                const float depth = std::min(1.0f, static_cast<float>(lock->drop_distance) / tuning::kSfxHardDropFullRows);
+                sfx_->play(audio::SfxId::HardDrop, tuning::kSfxHardDropMinGain + (1 - tuning::kSfxHardDropMinGain) * depth);
+            } else {
+                sfx_->play(audio::SfxId::Lock);
+            }
+        } else if (const auto* clear = std::get_if<game::LineClearEvent>(&ev)) {
+            const bool big = clear->lines >= 4 || clear->tspin == game::TSpin::Full || clear->all_clear;
+            sfx_->play(big ? audio::SfxId::ClearBig : audio::SfxId::Clear);
+            if (clear->sync.tier >= 0) {
+                const float intensity = tuning::kSyncTiers[static_cast<std::size_t>(clear->sync.tier)].fx_intensity;
+                sfx_->play(audio::SfxId::OnBeat, tuning::kSfxOnBeatMinGain + (1 - tuning::kSfxOnBeatMinGain) * intensity);
+            }
+        }
     }
 }
 

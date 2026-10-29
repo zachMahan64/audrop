@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "audio/sfx_synth.hpp"
 #include "game/piece.hpp"
 
 namespace audrop::ui {
@@ -82,6 +83,8 @@ struct Theme {
     // Pieces and effects.
     std::array<Color, 7> pieces{};   // indexed by game::PieceType
     BlockStyle blocks = BlockStyle::Glass;
+    bool jelly = false;               // blocks squash and wobble on landing (see fx/jelly.hpp)
+    audio::SfxStyle sfx = audio::SfxStyle::Modern;
     float grid_alpha = 0.05f;         // well grid lines
     float ghost_whiten = 0.0f;        // ghost fill: piece colour mixed this far towards white...
     float ghost_alpha = 0.10f;        // ...at this opacity (outline stays the piece colour)

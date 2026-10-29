@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <numbers>
 #include <random>
+#include <span>
 
 #include "config/tuning.hpp"
 
@@ -80,6 +81,12 @@ public:
         return p;
     }
     tuning::WhooshParams whoosh(tuning::WhooshParams p) {
+        p.start_hz *= vary(tuning::kSfxVaryFilter);
+        p.end_hz *= vary(tuning::kSfxVaryFilter);
+        p.decay_s *= vary(tuning::kSfxVaryTime);
+        return p;
+    }
+    tuning::BurstParams burst(tuning::BurstParams p) {
         p.start_hz *= vary(tuning::kSfxVaryFilter);
         p.end_hz *= vary(tuning::kSfxVaryFilter);
         p.decay_s *= vary(tuning::kSfxVaryTime);
@@ -187,6 +194,100 @@ void add_chip_beat(std::vector<double>& out, double transpose) {
     }
 }
 
+// --- tonal voices (Aero and Soft) ----------------------------------------------
+
+// One sine partial of a struck tone: frequency ratio, level and decay relative to the fundamental.
+struct Partial {
+    double ratio, level, decay;
+};
+// Inharmonic tubular-chime partials read as glass; marimba bars are tuned to 1:4:10.
+constexpr Partial kChime[] = {{1, 1, 1}, {2.76, 0.35, 0.55}, {5.40, 0.18, 0.35}, {8.93, 0.08, 0.25}};
+constexpr Partial kMarimba[] = {{1, 1, 1}, {3.93, 0.25, 0.35}, {9.2, 0.06, 0.15}};
+constexpr Partial kWood[] = {{1, 1, 1}, {2.7, 0.4, 0.5}};
+
+// Struck or plucked tone of decaying partials, starting `at` seconds in.
+void add_tone(std::vector<double>& out, double at, double hz, double decay_s, double level, std::span<const Partial> partials,
+              double attack_s = 0.0015) {
+    const std::size_t start = frames(at);
+    ensure(out, start + frames(decay_s * 7));
+    for (const auto& p : partials) {
+        const double f = hz * p.ratio, tau = decay_s * p.decay;
+        if (f > kRate * 0.45) continue;
+        // Recursive oscillator and envelopes: no sin/exp per sample.
+        const double step_c = std::cos(kTau * f / kRate), step_s = std::sin(kTau * f / kRate);
+        const double decay = std::exp(-1.0 / (tau * kRate)), rise = std::exp(-1.0 / (attack_s * kRate));
+        double re = 1, im = 0, env = level * p.level, attack = 1;
+        const std::size_t n = frames(tau * 7);
+        for (std::size_t i = 0; i < n; ++i) {
+            out[start + i] += im * env * (1.0 - attack);
+            const double r = re * step_c - im * step_s;
+            im = re * step_s + im * step_c;
+            re = r;
+            env *= decay;
+            attack *= rise;
+        }
+    }
+}
+
+// Water droplet: a sine whose pitch rises as it fades.
+void add_bubble(std::vector<double>& out, double at, const tuning::BubbleParams& p, double level) {
+    const std::size_t start = frames(at), n = frames(p.length_s);
+    ensure(out, start + n);
+    double phase = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / kRate;
+        phase += kTau * glide(t, p.length_s, p.start_hz, p.end_hz) / kRate;
+        const double env = (1.0 - std::exp(-t / 0.002)) * std::exp(-t / (p.length_s * 0.25)) * (1.0 - t / p.length_s);
+        out[start + i] += level * std::sin(phase) * env;
+    }
+}
+
+// --- unpitched textures (Aero and Soft clears) ------------------------------------
+
+double uniform(Noise& noise, double lo, double hi) { return lo + (hi - lo) * (noise.next() * 0.5 + 0.5); }
+
+// Filtered noise with its own attack, starting `at` seconds in (see tuning::BurstParams).
+void add_burst(std::vector<double>& out, double at, const tuning::BurstParams& p, Noise& noise) {
+    const double length = p.attack_s + p.decay_s * 6;
+    const std::size_t start = frames(at), n = frames(length);
+    ensure(out, start + n);
+    double lp1 = 0, lp2 = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        const double t = static_cast<double>(i) / kRate;
+        const double a = one_pole(glide(t, length, p.start_hz, p.end_hz));
+        const double x = noise.next();
+        lp1 += a * (x - lp1);
+        lp2 += a * (lp1 - lp2);
+        const double env = t < p.attack_s ? t / p.attack_s : std::exp(-(t - p.attack_s) / p.decay_s);
+        out[start + i] += p.level * (p.highpass ? x - lp2 : lp2) * env;
+    }
+}
+
+// Fizz of short bubbles at random pitches, too many at once to read as notes. Without `drift`
+// they bunch up at the start; with it they spread out and rise in pitch over time.
+void add_fizz(std::vector<double>& out, double at, const tuning::ScatterParams& p, double pitch, bool drift, Noise& noise) {
+    for (int i = 0; i < p.count; ++i) {
+        const double r = uniform(noise, 0, 1);
+        const double when = drift ? r : r * r;
+        const double height = drift ? 0.6 * r + 0.4 * uniform(noise, 0, 1) : uniform(noise, 0, 1);
+        const double hz = p.low_hz * std::pow(p.high_hz / p.low_hz, height) * pitch;
+        add_bubble(out, at + p.length_s * when, {hz, hz * uniform(noise, 1.5, 2.2), uniform(noise, 0.02, 0.05)},
+                   uniform(noise, 0.12, 0.3));
+    }
+}
+
+// Rattle of tiny wood taps at random pitches. Without `swell` it fades out; with it, it rises
+// and falls like a rainstick.
+void add_rattle(std::vector<double>& out, double at, const tuning::ScatterParams& p, double pitch, bool swell, Noise& noise) {
+    for (int i = 0; i < p.count; ++i) {
+        const double u = (static_cast<double>(i) + 0.5) / p.count;
+        const double when = std::max(0.0, (static_cast<double>(i) + uniform(noise, -0.4, 0.4)) / p.count);
+        const double shape = swell ? 0.25 + 0.75 * std::sin(std::numbers::pi * u) : 1.0 - 0.7 * u;
+        const double hz = p.low_hz * std::pow(p.high_hz / p.low_hz, uniform(noise, 0, 1)) * pitch;
+        add_tone(out, at + p.length_s * when, hz, tuning::kSoftTapDecay, shape * uniform(noise, 0.5, 1.0), kWood);
+    }
+}
+
 std::vector<float> finish(std::vector<double>& s, float peak) {
     // Short fade so every sound ends exactly at zero.
     const std::size_t fade = std::min(s.size(), frames(0.01));
@@ -226,10 +327,79 @@ std::vector<float> render_chip(SfxId id, int take) {
     return {};
 }
 
+std::vector<float> render_aero(SfxId id, int take) {
+    std::vector<double> s;
+    Noise noise(static_cast<std::uint64_t>(take) + 200);
+    Variation v(id, take);
+    const double p = v.pitch();
+    auto bubble = [&](const tuning::BubbleParams& b) { return tuning::BubbleParams{b.start_hz * p, b.end_hz * p, b.length_s * v.time()}; };
+    switch (id) {
+        case SfxId::Lock:
+            add_bubble(s, 0, bubble(tuning::kAeroLockBubble), 1.0);
+            return finish(s, tuning::kAeroLockPeak);
+        case SfxId::HardDrop:
+            add_kick(s, v.kick(tuning::kAeroDropThump), 0.8, noise);
+            add_bubble(s, 0, bubble(tuning::kAeroDropBubble), 1.0);
+            add_tone(s, 0, tuning::kAeroDropTickHz * p, 0.025, 0.25, kChime);
+            return finish(s, tuning::kAeroHardDropPeak);
+        case SfxId::Clear:
+            add_burst(s, 0, v.burst(tuning::kAeroSplash), noise);
+            add_fizz(s, 0.01, tuning::kAeroClearFizz, p, false, noise);
+            add_burst(s, 0.02, v.burst(tuning::kAeroShimmer), noise);
+            return finish(s, tuning::kAeroClearPeak);
+        case SfxId::ClearBig:
+            add_bubble(s, 0, bubble(tuning::kAeroBigBloop), 0.6);
+            add_burst(s, 0, v.burst(tuning::kAeroSplash), noise);
+            add_fizz(s, 0.03, tuning::kAeroClearBigFizz, p, true, noise);
+            add_burst(s, 0.05, v.burst(tuning::kAeroBigShimmer), noise);
+            return finish(s, tuning::kAeroClearBigPeak);
+        case SfxId::OnBeat:
+            add_tone(s, 0, tuning::kAeroBeatHz * p, 0.09 * v.time(), 1.0, kChime);
+            return finish(s, tuning::kAeroOnBeatPeak);
+        case SfxId::Count: break;
+    }
+    return {};
+}
+
+std::vector<float> render_soft(SfxId id, int take) {
+    std::vector<double> s;
+    Noise noise(static_cast<std::uint64_t>(take) + 300);
+    Variation v(id, take);
+    const double p = v.pitch();
+    switch (id) {
+        case SfxId::Lock:
+            add_tone(s, 0, tuning::kSoftLockHz * p, tuning::kSoftLockDecay * v.time(), 1.0, kMarimba);
+            add_whoosh(s, v.whoosh(tuning::kSoftFelt), 0.6, noise);
+            return finish(s, tuning::kSoftLockPeak);
+        case SfxId::HardDrop:
+            add_kick(s, v.kick(tuning::kSoftDropThump), 1.0, noise);
+            add_whoosh(s, v.whoosh(tuning::kSoftFelt), 1.0, noise);
+            add_tone(s, 0, tuning::kSoftDropTokHz * p, 0.05, 0.35, kMarimba);
+            return finish(s, tuning::kSoftHardDropPeak);
+        case SfxId::Clear:
+            add_kick(s, v.kick(tuning::kSoftClearThump), 0.6, noise);
+            add_burst(s, 0, v.burst(tuning::kSoftPuff), noise);
+            add_rattle(s, 0.01, tuning::kSoftClearRattle, p, false, noise);
+            return finish(s, tuning::kSoftClearPeak);
+        case SfxId::ClearBig:
+            add_kick(s, v.kick(tuning::kSoftClearThump), 0.7, noise);
+            add_burst(s, 0, v.burst(tuning::kSoftBigPuff), noise);
+            add_rattle(s, 0.02, tuning::kSoftClearBigRattle, p, true, noise);
+            return finish(s, tuning::kSoftClearBigPeak);
+        case SfxId::OnBeat:
+            add_tone(s, 0, tuning::kSoftBeatHz * p, 0.03 * v.time(), 1.0, kWood);
+            return finish(s, tuning::kSoftOnBeatPeak);
+        case SfxId::Count: break;
+    }
+    return {};
+}
+
 }  // namespace
 
 std::vector<float> render_sfx(SfxId id, int take, SfxStyle style) {
     if (style == SfxStyle::Chip) return render_chip(id, take);
+    if (style == SfxStyle::Aero) return render_aero(id, take);
+    if (style == SfxStyle::Soft) return render_soft(id, take);
     std::vector<double> s;
     Noise noise(static_cast<std::uint64_t>(take));
     Variation v(id, take);

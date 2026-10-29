@@ -17,6 +17,8 @@ float peak(const std::vector<float>& s) {
     return m;
 }
 
+constexpr SfxStyle kStyles[] = {SfxStyle::Modern, SfxStyle::Chip, SfxStyle::Aero, SfxStyle::Soft};
+
 }  // namespace
 
 TEST_CASE("every sound effect renders clean, normalized audio") {
@@ -24,8 +26,13 @@ TEST_CASE("every sound effect renders clean, normalized audio") {
         {tuning::kSfxLockPeak, tuning::kSfxHardDropPeak, tuning::kSfxClearPeak, tuning::kSfxClearBigPeak, tuning::kSfxOnBeatPeak},
         {tuning::kChipLockPeak, tuning::kChipHardDropPeak, tuning::kChipClearPeak, tuning::kChipClearBigPeak,
          tuning::kChipOnBeatPeak},
+        {tuning::kAeroLockPeak, tuning::kAeroHardDropPeak, tuning::kAeroClearPeak, tuning::kAeroClearBigPeak,
+         tuning::kAeroOnBeatPeak},
+        {tuning::kSoftLockPeak, tuning::kSoftHardDropPeak, tuning::kSoftClearPeak, tuning::kSoftClearBigPeak,
+         tuning::kSoftOnBeatPeak},
     };
-    for (const auto style : {SfxStyle::Modern, SfxStyle::Chip})
+    static_assert(std::size(peaks) == static_cast<std::size_t>(SfxStyle::Count));
+    for (const auto style : kStyles)
     for (int i = 0; i < static_cast<int>(SfxId::Count); ++i) {
         for (int take = 0; take < tuning::kSfxTakes; ++take) {
             CAPTURE(static_cast<int>(style));
@@ -41,7 +48,7 @@ TEST_CASE("every sound effect renders clean, normalized audio") {
 }
 
 TEST_CASE("hard drops are more pronounced than normal locks") {
-    for (const auto style : {SfxStyle::Modern, SfxStyle::Chip}) {
+    for (const auto style : kStyles) {
         CAPTURE(static_cast<int>(style));
         const auto lock = render_sfx(SfxId::Lock, 0, style);
         const auto drop = render_sfx(SfxId::HardDrop, 0, style);
@@ -51,17 +58,21 @@ TEST_CASE("hard drops are more pronounced than normal locks") {
     }
 }
 
-TEST_CASE("chip sounds differ from the modern ones") {
-    for (int i = 0; i < static_cast<int>(SfxId::Count); ++i) {
-        CAPTURE(i);
-        CHECK(render_sfx(static_cast<SfxId>(i), 0, SfxStyle::Chip) != render_sfx(static_cast<SfxId>(i), 0, SfxStyle::Modern));
-    }
+TEST_CASE("each style has its own sounds") {
+    for (int i = 0; i < static_cast<int>(SfxId::Count); ++i)
+        for (std::size_t a = 0; a < std::size(kStyles); ++a)
+            for (std::size_t b = a + 1; b < std::size(kStyles); ++b) {
+                CAPTURE(i);
+                CAPTURE(a);
+                CAPTURE(b);
+                CHECK(render_sfx(static_cast<SfxId>(i), 0, kStyles[a]) != render_sfx(static_cast<SfxId>(i), 0, kStyles[b]));
+            }
 }
 
 TEST_CASE("sound effects are deterministic per take, and takes differ") {
     CHECK(render_sfx(SfxId::Clear, 2) == render_sfx(SfxId::Clear, 2));
-    CHECK(render_sfx(SfxId::Clear, 2, SfxStyle::Chip) == render_sfx(SfxId::Clear, 2, SfxStyle::Chip));
-    for (const auto style : {SfxStyle::Modern, SfxStyle::Chip})
+    for (const auto style : kStyles) CHECK(render_sfx(SfxId::Clear, 2, style) == render_sfx(SfxId::Clear, 2, style));
+    for (const auto style : kStyles)
     for (int i = 0; i < static_cast<int>(SfxId::Count); ++i) {
         CAPTURE(static_cast<int>(style));
         CAPTURE(i);

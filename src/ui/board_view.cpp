@@ -15,6 +15,11 @@ namespace {
 constexpr float kSoftInset = 0.07f, kSoftRound = 0.3f;
 constexpr float kGelInset = 0.06f, kGelRound = 0.38f;
 
+Rectangle warped(Rectangle r, const CellWarp& w, float cell) {
+    const float width = r.width * w.sx, height = r.height * w.sy;
+    return {r.x + (r.width - width) / 2 + w.dx * cell, r.y + (r.height - height) / 2 + w.dy * cell, width, height};
+}
+
 Rectangle inset_rect(Rectangle r, float fraction) {
     const float inset = std::max(1.0f, r.width * fraction);
     return {r.x + inset * 0.5f, r.y + inset * 0.5f, r.width - inset, r.height - inset};
@@ -214,9 +219,10 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
     const int first_row = Board::kFirstVisibleRow - 2;
     for (int y = first_row; y < Board::kHeight; ++y)
         for (int x = 0; x < Board::kWidth; ++x)
-            if (auto v = board.at(x, y))
-                cells.push_back({L.cell_rect(x, y), th.piece(game::cell_piece(v)), y < Board::kFirstVisibleRow ? 0.5f : 0.92f,
-                                 game::cell_piece(v)});
+            if (auto v = board.at(x, y)) {
+                const Rectangle r = st.warp ? warped(L.cell_rect(x, y), st.warp->locked(x, y), cell) : L.cell_rect(x, y);
+                cells.push_back({r, th.piece(game::cell_piece(v)), y < Board::kFirstVisibleRow ? 0.5f : 0.92f, game::cell_piece(v)});
+            }
 
     if (const auto& a = g.active()) {
         const Color c = th.piece(a->type);
@@ -232,7 +238,9 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
         const float lock = static_cast<float>(g.lock_progress());
         for (auto m : game::piece_minos(a->type, a->rot)) {
             if (a->y + m.y < first_row) continue;
-            cells.push_back({L.cell_rect(a->x + m.x, a->y + m.y), lerp(c, WHITE, 0.15f), 1.0f - 0.25f * lock, a->type});
+            const int x = a->x + m.x, y = a->y + m.y;
+            const Rectangle r = st.warp ? warped(L.cell_rect(x, y), st.warp->active(x, y), cell) : L.cell_rect(x, y);
+            cells.push_back({r, lerp(c, WHITE, 0.15f), 1.0f - 0.25f * lock, a->type});
         }
     }
 

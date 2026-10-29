@@ -129,7 +129,7 @@ void App::apply_settings() {
     player_->set_volume(settings_.music_volume);
     sfx_->set_enabled(settings_.sfx_enabled);
     sfx_->set_volume(settings_.sfx_volume);
-    sfx_->set_style(theme_.pixel_art ? audio::SfxStyle::Chip : audio::SfxStyle::Modern);
+    sfx_->set_style(theme_.sfx);
     viz_->set_preset_duration(settings_.preset_seconds);
     effects_.set_options({settings_.reduce_flashing, settings_.screen_shake});
     if (settings_.vsync) SetWindowState(FLAG_VSYNC_HINT);
@@ -141,7 +141,7 @@ void App::apply_theme(ui::ThemeId id) {
     comp_->set_grade({static_cast<int>(theme_.viz_grade), theme_.viz_saturation, theme_.viz_wash, theme_.sky_top,
                       theme_.sky_bottom});
     effects_.set_theme(&theme_);
-    if (sfx_) sfx_->set_style(theme_.pixel_art ? audio::SfxStyle::Chip : audio::SfxStyle::Modern);
+    if (sfx_) sfx_->set_style(theme_.sfx);
     update_layout();
 }
 

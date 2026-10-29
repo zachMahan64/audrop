@@ -5,29 +5,34 @@
 
 namespace audrop::audio {
 
-Sfx::Sfx() {
-    for (std::size_t st = 0; st < styles_.size(); ++st) {
-        auto& slots = styles_[st];
-        for (std::size_t i = 0; i < slots.size(); ++i) {
-            for (int t = 0; t < tuning::kSfxTakes; ++t) {
-                std::vector<float> samples = render_sfx(static_cast<SfxId>(i), t, static_cast<SfxStyle>(st));
-                Wave wave{};
-                wave.frameCount = static_cast<unsigned int>(samples.size());
-                wave.sampleRate = kSfxSampleRate;
-                wave.sampleSize = 32;
-                wave.channels = 1;
-                wave.data = samples.data();
-                auto& take = slots[i].takes[static_cast<std::size_t>(t)];
-                take.voices[0] = LoadSoundFromWave(wave);  // copies the samples
-                for (std::size_t v = 1; v < take.voices.size(); ++v) take.voices[v] = LoadSoundAlias(take.voices[0]);
-            }
+Sfx::Sfx() { set_style(style_); }
+
+void Sfx::set_style(SfxStyle style) {
+    style_ = style;
+    const auto st = static_cast<std::size_t>(style);
+    if (loaded_[st]) return;
+    loaded_[st] = true;
+    auto& slots = styles_[st];
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        for (int t = 0; t < tuning::kSfxTakes; ++t) {
+            std::vector<float> samples = render_sfx(static_cast<SfxId>(i), t, style);
+            Wave wave{};
+            wave.frameCount = static_cast<unsigned int>(samples.size());
+            wave.sampleRate = kSfxSampleRate;
+            wave.sampleSize = 32;
+            wave.channels = 1;
+            wave.data = samples.data();
+            auto& take = slots[i].takes[static_cast<std::size_t>(t)];
+            take.voices[0] = LoadSoundFromWave(wave);  // copies the samples
+            for (std::size_t v = 1; v < take.voices.size(); ++v) take.voices[v] = LoadSoundAlias(take.voices[0]);
         }
     }
 }
 
 Sfx::~Sfx() {
-    for (auto& slots : styles_) {
-        for (auto& slot : slots) {
+    for (std::size_t st = 0; st < styles_.size(); ++st) {
+        if (!loaded_[st]) continue;
+        for (auto& slot : styles_[st]) {
             for (auto& take : slot.takes) {
                 for (std::size_t v = 1; v < take.voices.size(); ++v) UnloadSoundAlias(take.voices[v]);
                 UnloadSound(take.voices[0]);

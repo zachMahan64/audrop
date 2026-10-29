@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "fx/jelly.hpp"
 #include "fx/particles.hpp"
 #include "game/game.hpp"
 #include "ui/board_view.hpp"
@@ -45,6 +46,9 @@ public:
     float beat_pulse() const { return beat_pulse_; }
     float clear_glow() const { return clear_glow_; }
     Color pulse_color() const { return pulse_color_; }
+    // Block squash for jelly themes (null otherwise); track_piece() feeds it the falling piece.
+    const ui::CellWarper* warp() const { return th_ && th_->jelly ? &jelly_ : nullptr; }
+    void track_piece(const game::Game& g) { jelly_.track(g); }
     // True once after a clear grand enough to hard-cut the visualizer preset.
     bool take_preset_cut() { return std::exchange(preset_cut_, false); }
 
@@ -85,6 +89,7 @@ private:
     const ui::Theme* th_ = nullptr;
     std::mt19937 rng_{1234};
     Particles particles_;
+    Jelly jelly_;
     std::vector<RowFlash> rows_;
     std::vector<CellFlash> cells_;
     std::vector<Trail> trails_;

@@ -61,6 +61,8 @@ Theme milky() {
         {242, 152, 92, 255},   // L
     }};
     t.blocks = BlockStyle::Soft;
+    t.jelly = true;
+    t.sfx = audio::SfxStyle::Soft;
     t.additive_glow = false;
     t.glow_gain = 0.45f;
     t.flash = {150, 168, 240, 255};
@@ -121,6 +123,8 @@ Theme frutiger() {
         {255, 140, 28, 255},   // L
     }};
     t.blocks = BlockStyle::Gel;
+    t.jelly = true;
+    t.sfx = audio::SfxStyle::Aero;
     // Same-hue ghosts vanish against the blue sky, so they get a mostly white fill.
     t.ghost_whiten = 0.75f;
     t.ghost_alpha = 0.65f;
@@ -161,6 +165,7 @@ Theme retro() {
     t.scanlines = 0.2f;
 
     t.blocks = BlockStyle::Pixel;
+    t.sfx = audio::SfxStyle::Chip;
     t.grid_alpha = 0.0f;
     t.ghost_alpha = 0.0f;
     t.glow_gain = 0.0f;

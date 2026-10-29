@@ -93,6 +93,25 @@ inline constexpr float kFxChromatic = 0.65f;
 inline constexpr float kFxSpill = 0.65f;  // particles escape the board
 inline constexpr float kFxFullFlash = 0.85f;
 
+// Jelly themes (Milky, Frutiger): landed pieces squash into the stack and wobble back, the
+// impact ripples into nearby blocks, and the falling piece lags behind moves and pops on rotation.
+// Squash is a fraction of a cell; a wobble is e^(-t / decay) * sin(2 pi hz t), which peaks at
+// about 0.7 of its amplitude.
+inline constexpr float kJellySquash = 0.12f;         // hard drop from the top of the board
+inline constexpr float kJellyLockSquash = 0.07f;     // ordinary lock (and 0-row hard drops)
+inline constexpr float kJellyClearSquash = 0.08f;    // rows landing after a line clear
+inline constexpr float kJellyHz = 5.5f;
+inline constexpr float kJellyDecay = 0.13f;          // s
+inline constexpr float kJellyReach = 1.3f;           // ripple falloff distance (cells)
+inline constexpr float kJellyRippleDelay = 0.025f;   // s per cell the ripple travels
+inline constexpr float kJellyWiden = 0.7f;           // horizontal bulge per unit of squash
+inline constexpr float kJellyMoveLag = 0.18f;        // cells the falling piece trails per column moved...
+inline constexpr float kJellyMaxLag = 0.35f;         // ...up to this
+inline constexpr float kJellyLagStretch = 0.25f;     // sideways stretch per cell of lag
+inline constexpr float kJellyRotatePop = 2.6f;       // scale velocity kick on rotation (1/s)
+inline constexpr float kJellySpringHz = 7.0f;        // falling piece's lag and pop springs
+inline constexpr float kJellySpringDamping = 0.35f;  // damping ratio (1 = no overshoot)
+
 inline constexpr int kMaxParticles = 12000;
 inline constexpr int kParticlesPerCellBase = 6;
 inline constexpr int kParticlesPerCellMax = 40;
@@ -160,6 +179,72 @@ inline constexpr float kChipHardDropPeak = 0.6f;
 inline constexpr float kChipClearPeak = 0.42f;
 inline constexpr float kChipClearBigPeak = 0.5f;
 inline constexpr float kChipOnBeatPeak = 0.09f;
+
+// Unpitched clears (Aero, Soft) are built from these. A burst is filtered noise whose
+// cutoff sweeps from start_hz to end_hz, with its own attack.
+struct BurstParams {
+    double start_hz;
+    double end_hz;
+    double attack_s;
+    double decay_s;   // amplitude decay time constant
+    double level;
+    bool highpass;    // false = low-passed, true = bright hiss
+};
+// A cloud of short random-pitched events (bubbles or wood taps) spread over length_s; dense
+// enough that it reads as texture rather than notes.
+struct ScatterParams {
+    int count;
+    double length_s;
+    double low_hz;
+    double high_hz;
+};
+
+// Aero style (Frutiger theme): water bubbles, splashes and glassy hiss. A bubble is a sine
+// whose pitch rises from start_hz to end_hz as it fades.
+struct BubbleParams {
+    double start_hz;
+    double end_hz;
+    double length_s;
+};
+inline constexpr BubbleParams kAeroLockBubble{560, 1250, 0.075};
+inline constexpr BubbleParams kAeroDropBubble{190, 470, 0.17};    // deeper bloop...
+inline constexpr KickParams kAeroDropThump{140, 55, 0.02, 0.07, 0.3, 0.0, 1.0};  // ...with a soft body
+inline constexpr double kAeroDropTickHz = 2637;                    // ...and a glass tick
+// Clear: splash, a fizz of bubbles and a little shimmer.
+inline constexpr BurstParams kAeroSplash{6500, 600, 0.004, 0.06, 1.0, false};
+inline constexpr ScatterParams kAeroClearFizz{22, 0.35, 700, 2600};
+inline constexpr BurstParams kAeroShimmer{7000, 11000, 0.06, 0.18, 0.3, true};
+// Big clear: a deep bloop and a bigger splash, then a longer fizz drifting upward over a
+// swelling shimmer.
+inline constexpr BubbleParams kAeroBigBloop{220, 520, 0.18};
+inline constexpr ScatterParams kAeroClearBigFizz{48, 0.9, 500, 3200};
+inline constexpr BurstParams kAeroBigShimmer{5000, 12000, 0.25, 0.4, 0.4, true};
+inline constexpr double kAeroBeatHz = 3136;                        // on-beat glass ting
+inline constexpr float kAeroLockPeak = 0.3f;
+inline constexpr float kAeroHardDropPeak = 0.6f;
+inline constexpr float kAeroClearPeak = 0.45f;
+inline constexpr float kAeroClearBigPeak = 0.55f;
+inline constexpr float kAeroOnBeatPeak = 0.1f;
+
+// Soft style (Milky theme): muted wood and felt.
+inline constexpr double kSoftLockHz = 392;                         // muted marimba tok
+inline constexpr double kSoftLockDecay = 0.04;
+inline constexpr KickParams kSoftDropThump{115, 48, 0.03, 0.1, 0.35, 0.0, 1.1};  // pillowy thump
+inline constexpr WhooshParams kSoftFelt{1400, 160, 0.035, 0.45, false};          // felt noise on impacts
+inline constexpr double kSoftDropTokHz = 196;
+// Clears: a soft thump under a felt puff and a light rattle of wood taps (rainstick-like).
+inline constexpr KickParams kSoftClearThump{100, 50, 0.03, 0.08, 0.3, 0.0, 1.0};
+inline constexpr BurstParams kSoftPuff{2600, 250, 0.01, 0.1, 1.0, false};
+inline constexpr ScatterParams kSoftClearRattle{7, 0.18, 500, 1300};
+inline constexpr BurstParams kSoftBigPuff{3200, 200, 0.06, 0.25, 1.0, false};
+inline constexpr ScatterParams kSoftClearBigRattle{22, 0.75, 450, 1500};
+inline constexpr double kSoftTapDecay = 0.012;                     // each rattle tap
+inline constexpr double kSoftBeatHz = 1760;                        // on-beat wood tap
+inline constexpr float kSoftLockPeak = 0.32f;
+inline constexpr float kSoftHardDropPeak = 0.7f;
+inline constexpr float kSoftClearPeak = 0.5f;
+inline constexpr float kSoftClearBigPeak = 0.6f;
+inline constexpr float kSoftOnBeatPeak = 0.13f;
 
 inline constexpr float kSfxLockPeak = 0.35f;
 inline constexpr float kSfxHardDropPeak = 0.8f;

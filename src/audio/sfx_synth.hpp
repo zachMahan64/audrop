@@ -5,8 +5,9 @@
 namespace audrop::audio {
 
 enum class SfxId { Lock, HardDrop, Clear, ClearBig, OnBeat, Count };
-// Modern = punchy kicks and filtered noise; Chip = 8-bit console pulse/triangle/noise voices.
-enum class SfxStyle { Modern, Chip, Count };
+// Modern = punchy kicks and filtered noise; Chip = 8-bit console pulse/triangle/noise voices;
+// Aero = water bubbles and glass chimes; Soft = muted wood, felt and kalimba.
+enum class SfxStyle { Modern, Chip, Aero, Soft, Count };
 
 inline constexpr int kSfxSampleRate = 44100;
 

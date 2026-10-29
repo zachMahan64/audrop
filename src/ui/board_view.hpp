@@ -3,6 +3,7 @@
 #include <raylib.h>
 
 #include "game/game.hpp"
+#include "ui/cell_warp.hpp"
 #include "ui/theme.hpp"
 #include "viz/compositor.hpp"
 
@@ -28,6 +29,7 @@ struct BoardStyle {
     float beat_pulse = 0;   // 0..1, decays after each beat
     float clear_glow = 0;   // 0..1, after big clears
     Color pulse_color = WHITE;
+    const CellWarper* warp = nullptr;
 };
 
 void draw_block(const Theme& th, Rectangle r, Color c, float alpha, game::PieceType type);

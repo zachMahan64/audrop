@@ -25,6 +25,7 @@ void Effects::reset() {
     trails_.clear();
     waves_.clear();
     popups_.clear();
+    jelly_.reset();
     trauma_ = chroma_ = flash_ = beat_pulse_ = clear_glow_ = 0;
     if (th_) flash_color_ = pulse_color_ = th_->flash;
     preset_cut_ = false;
@@ -42,6 +43,7 @@ void Effects::popup(std::string text, Color color) {
 }
 
 void Effects::on_lock(const game::PieceLockedEvent& e, const BoardLayout& L) {
+    jelly_.on_lock(e);
     const Color c = th_->piece(e.type);
     for (auto v : e.cells) {
         CellFlash f;
@@ -69,6 +71,7 @@ void Effects::on_lock(const game::PieceLockedEvent& e, const BoardLayout& L) {
 }
 
 void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
+    jelly_.on_clear(e);
     const int tier = e.sync.tier;
     float tier_fx;
     Color tier_color;
@@ -215,6 +218,7 @@ void Effects::on_beat(float strength) { beat_pulse_ = std::max(beat_pulse_, stre
 void Effects::update(float dt) {
     time_ += dt;
     particles_.update(dt);
+    jelly_.update(dt);
     auto age = [dt](auto& list) {
         for (auto& x : list) x.age += dt;
         std::erase_if(list, [](const auto& x) { return x.age >= x.duration; });

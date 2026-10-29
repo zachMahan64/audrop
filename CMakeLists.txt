@@ -108,6 +108,7 @@ add_library(audrop_core STATIC
     src/audio/beat_tracker.cpp
     src/audio/tags.cpp
     src/audio/sfx_synth.cpp
+    src/fx/jelly.cpp
 )
 target_include_directories(audrop_core PUBLIC src)
 target_compile_features(audrop_core PUBLIC cxx_std_23)
@@ -198,6 +199,7 @@ if(AUDROP_BUILD_TESTS)
         tests/test_beat_tracker.cpp
         tests/test_tags.cpp
         tests/test_sfx.cpp
+        tests/test_jelly.cpp
     )
     target_link_libraries(audrop_tests PRIVATE audrop_core doctest::doctest)
     add_test(NAME audrop_tests COMMAND audrop_tests)

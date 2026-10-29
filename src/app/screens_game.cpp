@@ -278,6 +278,8 @@ void App::draw_game() {
     style.beat_pulse = effects_.beat_pulse();
     style.clear_glow = effects_.clear_glow();
     style.pulse_color = effects_.pulse_color();
+    effects_.track_piece(*game_);
+    style.warp = effects_.warp();
     draw_board(theme_, *comp_, *game_, layout_, style);
     effects_.draw_board_layer(theme_, layout_);
 

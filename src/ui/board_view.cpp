@@ -56,6 +56,11 @@ void draw_ghost(const Theme& th, Rectangle r, Color c) {
     DrawRectangleRoundedLinesEx(in, round, 6, thick, edge);
 }
 
+// Soft light inside a luminous block (call between begin_glow / end_glow).
+void draw_block_core(const Theme& th, Vector2 center, float cell, Color c, float strength) {
+    draw_glow(th, center, cell * 0.5f, with_alpha(lerp(c, WHITE, 0.4f), tuning::kBlockCoreAlpha * strength));
+}
+
 }  // namespace
 
 Vector2 BoardLayout::cell_pos(int x, int y) const {
@@ -160,13 +165,21 @@ void draw_piece_icon(const Theme& th, game::PieceType type, Vector2 center, floa
     const float ox = center.x - (maxx - minx + 1) * cell / 2 - minx * cell;
     const float oy = center.y - (maxy - miny + 1) * cell / 2 - miny * cell;
     const Color c = th.piece(type);
+    auto mid = [&](game::Vec2i v) {
+        return Vector2{ox + (static_cast<float>(v.x) + 0.5f) * cell, oy + (static_cast<float>(v.y) + 0.5f) * cell};
+    };
     begin_glow(th);
     for (auto v : m)
-        draw_glow(th, {ox + (static_cast<float>(v.x) + 0.5f) * cell, oy + (static_cast<float>(v.y) + 0.5f) * cell},
-                  cell * 1.2f, with_alpha(c, 0.18f * alpha));
+        draw_glow(th, mid(v), cell * (1.2f + tuning::kBlockHaloReach * th.block_glow),
+                  with_alpha(c, (0.18f + tuning::kBlockHaloAlpha * th.block_glow) * alpha));
     end_glow();
     for (auto v : m)
         draw_block(th, {ox + static_cast<float>(v.x) * cell, oy + static_cast<float>(v.y) * cell, cell, cell}, c, alpha, type);
+    if (th.block_glow > 0) {
+        begin_glow(th);
+        for (auto v : m) draw_block_core(th, mid(v), cell, c, th.block_glow * alpha);
+        end_glow();
+    }
 }
 
 void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, const BoardLayout& L, const BoardStyle& st) {
@@ -244,11 +257,20 @@ void draw_board(const Theme& th, viz::Compositor& comp, const game::Game& g, con
         }
     }
 
+    // Luminous themes: a wider halo and an inner light, both swelling a little on the beat.
+    const float lum = th.block_glow * (1.0f + tuning::kBlockBeatSwell * st.beat_pulse);
+    auto center = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
     begin_glow(th);
     for (const auto& c : cells)
-        draw_glow(th, {c.r.x + c.r.width / 2, c.r.y + c.r.height / 2}, cell * 1.15f, with_alpha(c.c, 0.13f * c.alpha));
+        draw_glow(th, center(c.r), cell * (1.15f + tuning::kBlockHaloReach * th.block_glow),
+                  with_alpha(c.c, (0.13f + tuning::kBlockHaloAlpha * lum) * c.alpha));
     end_glow();
     for (const auto& c : cells) draw_block(th, c.r, c.c, c.alpha, c.type);
+    if (lum > 0) {
+        begin_glow(th);
+        for (const auto& c : cells) draw_block_core(th, center(c.r), cell, c.c, lum * c.alpha);
+        end_glow();
+    }
 }
 
 }  // namespace audrop::ui

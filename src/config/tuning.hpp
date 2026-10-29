@@ -112,6 +112,26 @@ inline constexpr float kJellyRotatePop = 2.6f;       // scale velocity kick on r
 inline constexpr float kJellySpringHz = 7.0f;        // falling piece's lag and pop springs
 inline constexpr float kJellySpringDamping = 0.35f;  // damping ratio (1 = no overshoot)
 
+// Glass shatter (Drop): each cleared block breaks into a 2x2 grid of square shards, some
+// quarters again into 2x2, which fly apart and fall.
+// Speeds are in cells per second, so they scale with the board.
+inline constexpr float kShatterSplit = 0.3f;         // chance a quarter splits again
+inline constexpr float kShatterBurst = 2.0f;         // apart from the block's own centre...
+inline constexpr float kShatterBurstFx = 3.0f;       // ...plus this at full clear intensity
+inline constexpr float kShatterSide = 3.0f;          // outwards from the board's middle...
+inline constexpr float kShatterSideFx = 5.0f;        // ...plus this at full clear intensity
+inline constexpr float kShatterLift = 1.5f;          // upward kick (plus up to 3 random)
+inline constexpr float kShatterGravity = 40.0f;      // cells / s^2
+inline constexpr float kShatterSpin = 7.0f;          // max rad / s
+inline constexpr float kShatterLife = 0.5f;          // s, plus up to 0.35 random
+inline constexpr float kShatterParticles = 0.4f;     // share of the usual sparkle particles kept
+
+// Luminous blocks (Drop): light inside each block plus a wider halo, swelling on the beat.
+inline constexpr float kBlockCoreAlpha = 0.17f;
+inline constexpr float kBlockHaloAlpha = 0.1f;       // added to the base halo
+inline constexpr float kBlockHaloReach = 0.5f;       // extra halo radius (cells)
+inline constexpr float kBlockBeatSwell = 0.4f;       // brightness added at a full beat pulse
+
 inline constexpr int kMaxParticles = 12000;
 inline constexpr int kParticlesPerCellBase = 6;
 inline constexpr int kParticlesPerCellMax = 40;

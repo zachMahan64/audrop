@@ -84,6 +84,8 @@ struct Theme {
     std::array<Color, 7> pieces{};   // indexed by game::PieceType
     BlockStyle blocks = BlockStyle::Glass;
     bool jelly = false;               // blocks squash and wobble on landing (see fx/jelly.hpp)
+    float block_glow = 0.0f;          // light inside each block and a wider halo, swelling on beats (0 = off)
+    bool shatter_clears = false;      // cleared blocks break into glass shards
     audio::SfxStyle sfx = audio::SfxStyle::Modern;
     float grid_alpha = 0.05f;         // well grid lines
     float ghost_whiten = 0.0f;        // ghost fill: piece colour mixed this far towards white...

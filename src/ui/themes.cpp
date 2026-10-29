@@ -22,6 +22,8 @@ Theme drop() {
         {75, 120, 255, 255},   // J
         {255, 150, 60, 255},   // L
     }};
+    t.block_glow = 1.0f;
+    t.shatter_clears = true;
     for (std::size_t i = 0; i < t.tiers.size(); ++i) t.tiers[i] = rgba(tuning::kSyncTiers[i].rgba);
     return t;
 }

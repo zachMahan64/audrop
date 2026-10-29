@@ -24,6 +24,7 @@ void Effects::reset() {
     cells_.clear();
     trails_.clear();
     waves_.clear();
+    shards_.clear();
     popups_.clear();
     jelly_.reset();
     trauma_ = chroma_ = flash_ = beat_pulse_ = clear_glow_ = 0;
@@ -110,14 +111,17 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
 
     // Particles from every cleared cell.
     const bool spill = I >= tuning::kFxSpill;
-    const int per_cell = tuning::kParticlesPerCellBase +
-                         static_cast<int>(static_cast<float>(tuning::kParticlesPerCellMax - tuning::kParticlesPerCellBase) * Ic);
+    int per_cell = tuning::kParticlesPerCellBase +
+                   static_cast<int>(static_cast<float>(tuning::kParticlesPerCellMax - tuning::kParticlesPerCellBase) * Ic);
+    // Shards carry most of the break, so only a little sparkle stays.
+    if (th_->shatter_clears) per_cell = static_cast<int>(std::lround(static_cast<float>(per_cell) * tuning::kShatterParticles));
     for (std::size_t r = 0; r < e.rows.size(); ++r) {
         for (int x = 0; x < game::Board::kWidth; ++x) {
             const auto v = e.contents[r][static_cast<std::size_t>(x)];
             const Color base = v ? th_->piece(game::cell_piece(v)) : th_->flash;
             const Rectangle cr = L.cell_rect(x, e.rows[r]);
             const float side = (static_cast<float>(x) - 4.5f) / 4.5f;
+            if (th_->shatter_clears && v) shatter(cr, base, side, Ic, L.cell);
             for (int k = 0; k < per_cell; ++k) {
                 Particle p;
                 p.pos = {cr.x + rand01() * cr.width, cr.y + rand01() * cr.height};
@@ -200,6 +204,59 @@ void Effects::on_clear(const game::LineClearEvent& e, const BoardLayout& L) {
     if (e.all_clear) popup("ALL CLEAR", th_->popup_all_clear);
 }
 
+void Effects::shatter(Rectangle r, Color color, float side, float I, float cell) {
+    // Shards burst away from a point near the block's centre.
+    const Vector2 hub{r.x + r.width * (0.4f + 0.2f * rand01()), r.y + r.height * (0.4f + 0.2f * rand01())};
+    auto spawn = [&](float x, float y, float size) {
+        Shard s;
+        s.pos = {x + size / 2, y + size / 2};
+        s.size = size;
+        const Vector2 out{s.pos.x - hub.x, s.pos.y - hub.y};
+        const float len = std::max(0.001f, std::hypot(out.x, out.y));
+        const float burst = cell * (tuning::kShatterBurst + tuning::kShatterBurstFx * I) * (0.5f + 0.5f * rand01());
+        const float push = cell * (tuning::kShatterSide + tuning::kShatterSideFx * I) * side * (0.5f + 0.5f * rand01());
+        s.vel = {out.x / len * burst + push, out.y / len * burst - cell * (tuning::kShatterLift + 3.0f * rand01())};
+        s.spin = (rand01() * 2 - 1) * tuning::kShatterSpin;
+        s.gravity = cell * tuning::kShatterGravity;
+        s.color = color;
+        s.duration = tuning::kShatterLife + 0.35f * rand01();
+        shards_.push_back(s);
+    };
+    const float q = r.width / 2;
+    for (int i = 0; i < 4; ++i) {
+        const float x = r.x + static_cast<float>(i % 2) * q, y = r.y + static_cast<float>(i / 2) * q;
+        if (rand01() < tuning::kShatterSplit) {
+            for (int k = 0; k < 4; ++k) spawn(x + static_cast<float>(k % 2) * q / 2, y + static_cast<float>(k / 2) * q / 2, q / 2);
+        } else {
+            spawn(x, y, q);
+        }
+    }
+}
+
+void Effects::draw_shards(const Theme& th, float cell) const {
+    if (shards_.empty()) return;
+    auto fade = [](const Shard& s) { return std::pow(1.0f - s.t(), 1.5f); };
+    auto side = [](const Shard& s) { return s.size * (1.0f - 0.3f * s.t()); };
+    // Glass fill, slightly inset so the bright edges sit on its border.
+    for (const auto& s : shards_) {
+        const float d = side(s);
+        DrawRectanglePro({s.pos.x, s.pos.y, d, d}, {d / 2, d / 2}, s.rot * RAD2DEG,
+                         with_alpha(lerp(s.color, WHITE, 0.15f), 0.5f * fade(s)));
+    }
+    // Bright glass edges.
+    const float thick = std::max(1.0f, cell * 0.035f);
+    begin_glow(th);
+    for (const auto& s : shards_) {
+        const float h = side(s) / 2, c = std::cos(s.rot), sn = std::sin(s.rot);
+        Vector2 p[4];
+        const float ox[4] = {-h, h, h, -h}, oy[4] = {-h, -h, h, h};
+        for (int k = 0; k < 4; ++k) p[k] = {s.pos.x + ox[k] * c - oy[k] * sn, s.pos.y + ox[k] * sn + oy[k] * c};
+        const Color edge = with_alpha(lerp(s.color, WHITE, 0.45f), 0.7f * fade(s));
+        for (int k = 0; k < 4; ++k) DrawLineEx(p[k], p[(k + 1) % 4], thick, edge);
+    }
+    end_glow();
+}
+
 void Effects::on_tspin_no_lines(game::TSpin t) {
     Popup c;
     c.text = clear_name(0, t);
@@ -227,7 +284,14 @@ void Effects::update(float dt) {
     age(cells_);
     age(trails_);
     age(waves_);
+    age(shards_);
     age(popups_);
+    for (auto& s : shards_) {
+        s.vel.y += s.gravity * dt;
+        s.pos.x += s.vel.x * dt;
+        s.pos.y += s.vel.y * dt;
+        s.rot += s.spin * dt;
+    }
     trauma_ = std::max(0.0f, trauma_ - 1.4f * dt);
     chroma_ *= std::exp(-6.0f * dt);
     flash_ *= std::exp(-7.0f * dt);
@@ -289,6 +353,7 @@ void Effects::draw_board_layer(const Theme& th, const BoardLayout& L) const {
 
 void Effects::draw_overlay(const Theme& th, const BoardLayout& L) const {
     const float u = L.cell / 8.0f;
+    draw_shards(th, L.cell);
     particles_.draw(th, u, {L.board.x, L.board.y});
     const float cell = L.cell;
     for (const auto& p : popups_) {

@@ -70,6 +70,13 @@ private:
         Rectangle r;
         Color color;
     };
+    // Square of glass from a cleared block, centred on `pos`.
+    struct Shard : Timed {
+        Vector2 pos, vel;
+        float size = 0;
+        float rot = 0, spin = 0, gravity = 0;
+        Color color;
+    };
     struct Wave : Timed {
         Vector2 center;
         float max_radius, strength;
@@ -84,6 +91,9 @@ private:
 
     float rand01() { return std::uniform_real_distribution<float>(0.0f, 1.0f)(rng_); }
     void draw_board_layer_pixel(const ui::BoardLayout& L) const;
+    // Breaks a cleared block into shards; `side` is -1..1 across the board, `I` the clear intensity.
+    void shatter(Rectangle r, Color color, float side, float I, float cell);
+    void draw_shards(const ui::Theme& th, float cell) const;
 
     FxOptions opts_;
     const ui::Theme* th_ = nullptr;
@@ -94,6 +104,7 @@ private:
     std::vector<CellFlash> cells_;
     std::vector<Trail> trails_;
     std::vector<Wave> waves_;
+    std::vector<Shard> shards_;
     std::vector<Popup> popups_;
     float trauma_ = 0;
     float chroma_ = 0;

@@ -43,6 +43,15 @@ float font_px(const Theme& th, float size) {
     return static_cast<float>(kPixelFontPx * std::max(th.min_font_steps, static_cast<int>(std::lround(size / kPixelFontPx))));
 }
 
+// Turns `c` round the HSV hue wheel, keeping its saturation and brightness so a palette keeps
+// its character (neon stays neon, pastel stays pastel).
+Color rotate_hue(Color c, float degrees) {
+    const Vector3 hsv = ColorToHSV(c);
+    Color out = ColorFromHSV(std::fmod(hsv.x + degrees, 360.0f), hsv.y, hsv.z);
+    out.a = c.a;
+    return out;
+}
+
 }  // namespace
 
 void load_theme(Theme& th, ThemeId id) {
@@ -69,9 +78,17 @@ void unload_theme(Theme& th) {
 }
 
 void Theme::set_level(int level) {
-    if (!level_palettes) return;
-    const auto& pair = level_colors[static_cast<std::size_t>((std::max(level, 1) - 1) % static_cast<int>(level_colors.size()))];
-    for (std::size_t i = 0; i < pieces.size(); ++i) pieces[i] = pair[piece_tone[i] == 2 ? 1 : 0];
+    const int index = (std::max(level, 1) - 1) % static_cast<int>(level_colors.size());
+    if (level_palettes) {
+        const auto& pair = level_colors[static_cast<std::size_t>(index)];
+        for (std::size_t i = 0; i < pieces.size(); ++i) pieces[i] = pair[piece_tone[i] == 2 ? 1 : 0];
+        return;
+    }
+    if (level_hue_step == 0 || index + 1 == hue_level_) return;
+    if (hue_level_ == 1) base_pieces_ = pieces;
+    hue_level_ = index + 1;
+    for (std::size_t i = 0; i < pieces.size(); ++i)
+        pieces[i] = index == 0 ? base_pieces_[i] : rotate_hue(base_pieces_[i], level_hue_step * static_cast<float>(index));
 }
 
 void begin_glow(const Theme& th) { BeginBlendMode(th.additive_glow ? BLEND_ADDITIVE : BLEND_ALPHA); }

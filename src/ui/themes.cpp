@@ -24,6 +24,7 @@ Theme drop() {
     }};
     t.block_glow = 1.0f;
     t.shatter_clears = true;
+    t.level_hue_step = 36;
     for (std::size_t i = 0; i < t.tiers.size(); ++i) t.tiers[i] = rgba(tuning::kSyncTiers[i].rgba);
     return t;
 }
@@ -65,6 +66,7 @@ Theme milky() {
     t.blocks = BlockStyle::Soft;
     t.jelly = true;
     t.sfx = audio::SfxStyle::Soft;
+    t.level_hue_step = 36;
     t.additive_glow = false;
     t.glow_gain = 0.45f;
     t.flash = {150, 168, 240, 255};
@@ -127,6 +129,7 @@ Theme frutiger() {
     t.blocks = BlockStyle::Gel;
     t.jelly = true;
     t.sfx = audio::SfxStyle::Aero;
+    t.level_hue_step = 36;
     // Same-hue ghosts vanish against the blue sky, so they get a mostly white fill.
     t.ghost_whiten = 0.75f;
     t.ghost_alpha = 0.65f;

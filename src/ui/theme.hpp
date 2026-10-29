@@ -108,11 +108,19 @@ struct Theme {
     bool level_palettes = false;
     std::array<std::array<Color, 2>, 10> level_colors{};
     std::array<unsigned char, 7> piece_tone{};  // 0 = hollow in colour 1, 1 = solid colour 1, 2 = solid colour 2
+    // Other themes: each level turns the whole piece palette this far round the HSV colour
+    // wheel (every piece keeps its saturation and brightness). 0 = off.
+    float level_hue_step = 0;
 
     Color piece(game::PieceType t) const { return pieces[static_cast<std::size_t>(t)]; }
     bool hollow(game::PieceType t) const { return level_palettes && piece_tone[static_cast<std::size_t>(t)] == 0; }
-    // Recolours `pieces` for `level` (1-based; palettes repeat). No-op without level palettes.
+    // Recolours `pieces` for `level` (1-based; palettes repeat). No-op without level palettes or
+    // a hue step.
     void set_level(int level);
+
+private:
+    std::array<Color, 7> base_pieces_{};  // level 1 colours, captured on the first hue shift
+    int hue_level_ = 1;
 };
 
 Theme theme_spec(ThemeId id);

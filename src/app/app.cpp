@@ -244,6 +244,11 @@ void App::handle_global_keys() {
         viz_->next_preset(false);
         toast("Visual: " + viz_->current_preset());
     }
+    if (IsKeyPressed(KEY_H) && viz_->supports_presets()) {
+        visual_held_ = !visual_held_;
+        viz_->set_locked(visual_held_);
+        toast(visual_held_ ? "Holding visual " + viz_->current_preset() : "Visual released");
+    }
     if (IsKeyPressed(KEY_F8) && viz_->supports_presets()) {
         const std::string name = viz_->current_preset();
         viz_->ban_current();
@@ -275,7 +280,7 @@ void App::update_track_state() {
     track_banner_at_ = wall_;
     analysis_->request(track_path_, true);
     if (auto next = player_->upcoming()) analysis_->request(next->path, false);
-    viz_->next_preset(false);
+    if (!visual_held_) viz_->next_preset(false);
     if (game_ && !game_->over()) {
         if (run_tracks_.empty() || run_tracks_.back() != track_title_) run_tracks_.push_back(track_title_);
     }
@@ -441,20 +446,32 @@ void App::draw_now_playing() {
     const float h = static_cast<float>(screen_h_), w = static_cast<float>(screen_w_);
     const float size = std::clamp(h * 0.024f, 14.0f, 26.0f);
     const float y = h - size * 2.4f;
-    const std::string keys = "[ ] TRACK    TAB VISUAL    F8 BAN VISUAL    F11 FULLSCREEN";
-    const float keys_w = measure(theme_, keys, size * 0.7f, FontWeight::Regular, 1.5f).x;
-    // The track info gets whatever the key hints (wide with pixel fonts) leave free.
+    const std::string keys = visual_held_ ? "[ ] TRACK    TAB VISUAL    H RELEASE VISUAL    F8 BAN VISUAL    F11 FULLSCREEN"
+                                          : "[ ] TRACK    TAB VISUAL    H HOLD VISUAL    F8 BAN VISUAL    F11 FULLSCREEN";
+    const char* hint = "Drop music files or folders onto the window to start";
+    const float key_size = size * 0.7f;
+    // The key hints (wide with pixel fonts) wrap onto more lines rather than run into the text
+    // on the left; the track info gets whatever width they leave free.
+    const float left_w = track_title_.empty() ? measure(theme_, hint, size).x : w * 0.45f;
+    const auto key_lines = wrap_segments(theme_, keys, std::max(w * 0.3f, w - left_w - size * 3), key_size, FontWeight::Regular, 1.5f);
+    float keys_w = 0;
+    for (const auto& l : key_lines) keys_w = std::max(keys_w, measure(theme_, l, key_size, FontWeight::Regular, 1.5f).x);
     const float info_w = std::min(w * 0.45f, w - keys_w - size * 3);
     if (!track_title_.empty()) {
         const float title_y = draw_track_info(size, info_w);
         label(theme_, "NOW PLAYING", {size, title_y - size * 1.05f}, size * 0.7f, theme_.text_faint);
     } else {
-        text(theme_, "Drop music files or folders onto the window to start", {size, y}, size, theme_.text_dim);
+        text(theme_, hint, {size, y}, size, theme_.text_dim);
     }
-    text_right(theme_, keys, {w - size, y + size * 0.3f}, size * 0.7f, theme_.text_faint, FontWeight::Regular, 1.5f);
+    const float line_h = key_size * 1.35f;
+    float key_y = y + size * 0.3f - line_h * static_cast<float>(key_lines.size() - 1);
+    for (const auto& l : key_lines) {
+        text_right(theme_, l, {w - size, key_y}, key_size, theme_.text_faint, FontWeight::Regular, 1.5f);
+        key_y += line_h;
+    }
     if (viz_->supports_presets())
         text_right(theme_, ellipsize(theme_, viz_->current_preset(), std::min(w * 0.4f, w - info_w - size * 3), size * 0.7f),
-                   {w - size, y - size * 1.0f},
+                   {w - size, y - size * 1.0f - line_h * static_cast<float>(key_lines.size() - 1)},
                    size * 0.7f, with_alpha(theme_.text_faint, 0.7f));
 }
 

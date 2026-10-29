@@ -59,6 +59,7 @@ playing across games.
 | Esc / P / F1 | pause |
 | `[` `]` | previous / next track (menus) |
 | Tab | next visual |
+| H | hold the current visual (no timed, track-change or PERFECT cuts) / release it |
 | F8 | ban the current visual (Settings → UNBAN ALL VISUALS brings them back) |
 | F11 | fullscreen |
 

@@ -215,7 +215,7 @@ void App::tick_game(double dt) {
                 } else if constexpr (std::is_same_v<T, game::LineClearEvent>) {
                     effects_.on_clear(e, layout_);
                     debug_on_clear();
-                    if (effects_.take_preset_cut()) viz_->next_preset(true);
+                    if (effects_.take_preset_cut() && !visual_held_) viz_->next_preset(true);
                 } else if constexpr (std::is_same_v<T, game::TSpinNoLinesEvent>) {
                     effects_.on_tspin_no_lines(e.tspin);
                 } else if constexpr (std::is_same_v<T, game::LevelUpEvent>) {

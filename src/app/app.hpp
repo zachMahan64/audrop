@@ -128,6 +128,7 @@ private:
     ui::Menu menu_;
     int screen_w_ = 0, screen_h_ = 0;
     float viz_scale_applied_ = 0;
+    bool visual_held_ = false;  // H: keep the current preset until released (Tab still switches)
     bool quit_ = false;
     double wall_ = 0;
     double sync_now_ = 0;

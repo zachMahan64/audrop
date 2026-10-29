@@ -169,6 +169,7 @@ public:
     }
 
     void set_preset_duration(double seconds) override { projectm_set_preset_duration(pm_, seconds); }
+    void set_locked(bool locked) override { projectm_set_preset_locked(pm_, locked); }
 
 private:
     projectm_handle pm_;

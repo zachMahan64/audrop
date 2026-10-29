@@ -30,6 +30,8 @@ public:
     virtual int banned_count() const { return 0; }
     virtual std::string current_preset() const { return {}; }
     virtual void set_preset_duration(double /*seconds*/) {}
+    // Stops the visualizer's own timed preset changes; next_preset() still switches.
+    virtual void set_locked(bool /*locked*/) {}
     virtual bool supports_presets() const { return false; }
 };
 
